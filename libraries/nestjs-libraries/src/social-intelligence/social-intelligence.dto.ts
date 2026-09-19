@@ -154,3 +154,9 @@ export class GeneratePlanDto {
   @IsOptional() @IsArray() evidence?: unknown[];
   @IsOptional() @IsString() timezone?: string;
 }
+
+
+export class LinkPostizPostDto {
+  @IsString() postizPostId!: string;
+  @IsOptional() @IsIn(ideaStatuses) status?: string;
+}
