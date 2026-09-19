@@ -27,6 +27,7 @@ import {
   GenerateStrategyDto,
   LinkPostizPostDto,
   SyncConnectedAuditDto,
+  UpdateBrandDto,
   UpdateIdeaStatusDto,
 } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.dto';
 
@@ -72,6 +73,15 @@ export class SocialIntelligenceController {
       body.website,
       body.industry
     );
+  }
+
+  @Patch('/brands/:id')
+  updateBrand(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: UpdateBrandDto
+  ) {
+    return this.repository.updateBrand(org.id, id, body);
   }
 
   @Post('/targets')
