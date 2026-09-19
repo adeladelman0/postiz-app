@@ -14,6 +14,7 @@ import {
   CreateStrategyDto,
   CreateSocialTargetDto,
   DecideApprovalDto,
+  UpdateBrandDto,
 } from './social-intelligence.dto';
 
 @Injectable()
@@ -113,6 +114,27 @@ export class SocialIntelligenceRepository {
       RETURNING *
     `);
     return rows[0];
+  }
+
+  async updateBrand(
+    organizationId: string,
+    brandId: string,
+    input: UpdateBrandDto
+  ) {
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      UPDATE brand_profiles
+      SET
+        name = COALESCE(${input.name || null}, name),
+        website = COALESCE(${input.website || null}, website),
+        industry = COALESCE(${input.industry || null}, industry),
+        audience = COALESCE(${input.audience ? JSON.stringify(input.audience) : null}::jsonb, audience),
+        voice = COALESCE(${input.voice ? JSON.stringify(input.voice) : null}::jsonb, voice),
+        updated_at = NOW()
+      WHERE id = ${brandId}::uuid
+        AND organization_id = ${organizationId}
+      RETURNING *
+    `);
+    return rows[0] || null;
   }
 
   async createTarget(organizationId: string, input: CreateSocialTargetDto) {
