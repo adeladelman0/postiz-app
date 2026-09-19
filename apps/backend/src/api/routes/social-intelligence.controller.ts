@@ -5,6 +5,7 @@ import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.req
 import { SocialIntelligenceService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.service';
 import { SocialIntelligenceRepository } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.repository';
 import { SocialIntelligenceAiService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.ai.service';
+import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { AuditSnapshot } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.types';
 import {
   CreateApprovalRequestDto,
@@ -22,6 +23,7 @@ import {
   GeneratePlanDto,
   GenerateStrategyDto,
   LinkPostizPostDto,
+  SyncConnectedAuditDto,
   UpdateIdeaStatusDto,
 } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.dto';
 
@@ -30,7 +32,8 @@ export class SocialIntelligenceController {
   constructor(
     private readonly intelligence: SocialIntelligenceService,
     private readonly repository: SocialIntelligenceRepository,
-    private readonly ai: SocialIntelligenceAiService
+    private readonly ai: SocialIntelligenceAiService,
+    private readonly integrations: IntegrationService
   ) {}
 
   @Get('/dashboard')
@@ -57,6 +60,41 @@ export class SocialIntelligenceController {
     @Body() body: CreateSocialTargetDto
   ) {
     return this.repository.createTarget(org.id, body);
+  }
+
+  @Post('/connected/:integrationId/audit')
+  async syncConnectedAudit(
+    @GetOrgFromRequest() org: Organization,
+    @Param('integrationId') integrationId: string,
+    @Body() body: SyncConnectedAuditDto
+  ) {
+    const integration = await this.integrations.getIntegrationById(
+      org.id,
+      integrationId
+    );
+    if (!integration) {
+      return null;
+    }
+    const analytics = await this.integrations.checkAnalytics(
+      org,
+      integrationId,
+      String(body.days)
+    );
+    const target = await this.repository.upsertConnectedTarget(org.id, {
+      platform: integration.providerIdentifier,
+      integrationId: integration.id,
+      name: integration.name,
+      profile: integration.profile,
+    });
+    if (!target) {
+      return null;
+    }
+    return this.repository.createConnectedAudit(
+      org.id,
+      target.id,
+      analytics,
+      body.days
+    );
   }
 
   @Post('/audits')
