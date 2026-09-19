@@ -7,6 +7,7 @@ import { useSocialIntelligence } from '@gitroom/frontend/components/social-intel
 export default function Page() {
   const { data, request } = useSocialIntelligence();
   const [postId,setPostId]=useState('');
+  const [planItemId,setPlanItemId]=useState('');
   const [platform,setPlatform]=useState('instagram');
   const [views,setViews]=useState('');
   const [likes,setLikes]=useState('');
@@ -24,6 +25,7 @@ export default function Page() {
     e.preventDefault(); setWorking(true); setMessage('');
     try {
       await request('/performance','POST',{
+        planItemId: planItemId || undefined,
         postizPostId:postId, platform,
         metrics:{views:Number(views||0),likes:Number(likes||0),comments:Number(comments||0),shares:Number(shares||0),saves:Number(saves||0)},
         observedAt:new Date().toISOString(),
@@ -50,12 +52,31 @@ export default function Page() {
     finally{setWorking(false);}
   }
 
+  async function recompute(){
+    if(!brand)return;
+    setWorking(true); setMessage('');
+    try{
+      await request('/learning/'+brand.id+'/recompute','POST',{});
+      setMessage('Learning insight recomputed from observed performance.');
+    }catch(e:any){setMessage(e.message||'Could not recompute learning');}
+    finally{setWorking(false);}
+  }
+
   return <div className="p-6 md:p-10 max-w-[1500px] mx-auto w-full">
     <Link href="/social-intelligence" className="text-sm opacity-60">← Social Intelligence</Link>
     <h1 className="text-3xl font-semibold mt-4">Learning Loop</h1>
     <p className="opacity-65 mt-2 max-w-3xl">Observed post metrics become evidence for the next strategy, idea batch and plan.</p>
 
     <form onSubmit={savePerformance} className="mt-8 rounded-2xl border border-white/10 p-5 grid gap-3 md:grid-cols-4">
+      <select value={planItemId} onChange={(e)=>{
+        setPlanItemId(e.target.value);
+        const item=data.planItems.find((x)=>x.id===e.target.value);
+        if(item?.postiz_post_id) setPostId(item.postiz_post_id);
+        if(item?.platform) setPlatform(item.platform);
+      }} className="rounded-xl border border-white/10 bg-transparent px-4 py-3 md:col-span-2">
+        <option value="">Optional planner item</option>
+        {data.planItems.map((item)=><option key={item.id} value={item.id}>{item.platform} · {item.hook || String(item.id).slice(0,8)}</option>)}
+      </select>
       <input required value={postId} onChange={(e)=>setPostId(e.target.value)} placeholder="Postiz post ID" className="rounded-xl border border-white/10 bg-transparent px-4 py-3 md:col-span-2" />
       <select value={platform} onChange={(e)=>setPlatform(e.target.value)} className="rounded-xl border border-white/10 bg-transparent px-4 py-3"><option>instagram</option><option>facebook</option><option>tiktok</option><option>youtube</option><option>linkedin</option><option>x</option><option>threads</option></select>
       <button disabled={working} className="rounded-xl bg-white text-black px-5 py-3 font-medium disabled:opacity-50">Save observed metrics</button>
@@ -65,7 +86,10 @@ export default function Page() {
     <div className="mt-6 rounded-2xl border border-white/10 p-5 grid gap-3 md:grid-cols-[220px_1fr_auto]">
       <select value={brand?.id || ''} onChange={(e)=>setBrandId(e.target.value)} className="rounded-xl border border-white/10 bg-transparent px-4 py-3">{data.brands.map((item)=><option key={item.id} value={item.id}>{item.name}</option>)}</select>
       <input value={insight} onChange={(e)=>setInsight(e.target.value)} placeholder="Evidence-backed learning, e.g. tutorial videos drove more saves than product posts" className="rounded-xl border border-white/10 bg-transparent px-4 py-3" />
-      <button onClick={saveInsight} disabled={!brand||!insight||working} className="rounded-xl border border-white/10 px-5 py-3 disabled:opacity-50">Add insight</button>
+      <div className="flex gap-2">
+        <button onClick={saveInsight} disabled={!brand||!insight||working} className="rounded-xl border border-white/10 px-4 py-3 disabled:opacity-50">Add insight</button>
+        <button onClick={recompute} disabled={!brand||working} className="rounded-xl bg-white text-black px-4 py-3 disabled:opacity-50">Recompute</button>
+      </div>
     </div>
 
     {message ? <div className="mt-4 text-sm opacity-65">{message}</div> : null}
