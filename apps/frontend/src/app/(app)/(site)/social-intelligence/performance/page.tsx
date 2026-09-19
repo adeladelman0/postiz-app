@@ -52,6 +52,17 @@ export default function Page() {
     finally{setWorking(false);}
   }
 
+  async function syncPostiz(planItemId:string){
+    setWorking(true); setMessage('');
+    try{
+      const result=await request<any>('/performance/sync/'+planItemId,'POST',{days:30});
+      if(result?.missing){ setMessage('The published platform post is not available for analytics.'); }
+      else if(!result){ setMessage('No published Postiz post is linked to this planner item yet.'); }
+      else { setMessage('Published analytics synced from Postiz.'); }
+    }catch(e:any){setMessage(e.message||'Could not sync published analytics');}
+    finally{setWorking(false);}
+  }
+
   async function recompute(){
     if(!brand)return;
     setWorking(true); setMessage('');
@@ -66,6 +77,14 @@ export default function Page() {
     <Link href="/social-intelligence" className="text-sm opacity-60">← Social Intelligence</Link>
     <h1 className="text-3xl font-semibold mt-4">Learning Loop</h1>
     <p className="opacity-65 mt-2 max-w-3xl">Observed post metrics become evidence for the next strategy, idea batch and plan.</p>
+
+    <div className="mt-8 rounded-2xl border border-white/10 p-5">
+      <div className="flex justify-between gap-4"><b>Published Postiz sync</b><span className="text-xs opacity-50">official connected-account analytics</span></div>
+      <div className="flex flex-wrap gap-2 mt-4">
+        {data.planItems.filter((item)=>item.postiz_post_id).map((item)=><button key={item.id} onClick={()=>syncPostiz(item.id)} disabled={working} className="rounded-xl border border-white/10 px-4 py-3 text-sm disabled:opacity-50">{item.platform} · {item.hook || String(item.id).slice(0,8)}</button>)}
+        {!data.planItems.some((item)=>item.postiz_post_id) ? <div className="text-sm opacity-55">Create and link Postiz drafts from the Planner first.</div> : null}
+      </div>
+    </div>
 
     <form onSubmit={savePerformance} className="mt-8 rounded-2xl border border-white/10 p-5 grid gap-3 md:grid-cols-4">
       <select value={planItemId} onChange={(e)=>{
