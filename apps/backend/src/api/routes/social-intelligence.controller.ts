@@ -4,6 +4,7 @@ import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.reque
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { SocialIntelligenceService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.service';
 import { SocialIntelligenceRepository } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.repository';
+import { SocialIntelligenceAiService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.ai.service';
 import { AuditSnapshot } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.types';
 import {
   CreateApprovalRequestDto,
@@ -17,6 +18,9 @@ import {
   CreateSocialTargetDto,
   CreateStrategyDto,
   DecideApprovalDto,
+  GenerateIdeasDto,
+  GeneratePlanDto,
+  GenerateStrategyDto,
   UpdateIdeaStatusDto,
 } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.dto';
 
@@ -24,7 +28,8 @@ import {
 export class SocialIntelligenceController {
   constructor(
     private readonly intelligence: SocialIntelligenceService,
-    private readonly repository: SocialIntelligenceRepository
+    private readonly repository: SocialIntelligenceRepository,
+    private readonly ai: SocialIntelligenceAiService
   ) {}
 
   @Get('/dashboard')
@@ -134,6 +139,21 @@ export class SocialIntelligenceController {
     @Body() body: CreateLearningInsightDto
   ) {
     return this.repository.createInsight(org.id, body);
+  }
+
+  @Post('/generate/strategy')
+  generateStrategy(@Body() body: GenerateStrategyDto) {
+    return this.ai.generateStrategy(body);
+  }
+
+  @Post('/generate/ideas')
+  generateIdeas(@Body() body: GenerateIdeasDto) {
+    return this.ai.generateIdeas(body);
+  }
+
+  @Post('/generate/plan')
+  generatePlan(@Body() body: GeneratePlanDto) {
+    return this.ai.generatePlan(body);
   }
 
   @Post('/audit/preview')
