@@ -1,13 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useSocialIntelligence } from '@gitroom/frontend/components/social-intelligence/use.social-intelligence';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 
 const platforms = ['instagram','facebook','tiktok','youtube','linkedin','x','threads'];
 
 export default function Page() {
   const { data, request, isLoading } = useSocialIntelligence();
+  const fetcher = useFetch();
+  const [outliers, setOutliers] = useState<any[]>([]);
   const [platform, setPlatform] = useState('instagram');
   const [profileUrl, setProfileUrl] = useState('');
   const [label, setLabel] = useState('');
@@ -15,6 +18,22 @@ export default function Page() {
   const [error, setError] = useState('');
 
   const competitors = data.targets.filter((target) => target.is_competitor);
+
+  useEffect(() => {
+    fetcher('/social-intelligence/competitors/outliers')
+      .then((response) => response.json())
+      .then((payload) => setOutliers(Array.isArray(payload) ? payload : []))
+      .catch(() => setOutliers([]));
+  }, [fetcher, data.audits.length]);
+
+  const themes = useMemo(() => {
+    const counts = new Map<string, number>();
+    outliers.forEach((item) => {
+      const topics = Array.isArray(item.topics) ? item.topics : [];
+      topics.forEach((topic:any) => counts.set(String(topic), (counts.get(String(topic)) || 0) + 1));
+    });
+    return [...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12);
+  }, [outliers]);
 
   async function addCompetitor(event: FormEvent) {
     event.preventDefault();
@@ -53,6 +72,34 @@ export default function Page() {
       <button disabled={saving} className="rounded-xl bg-white text-black px-5 py-3 font-medium disabled:opacity-50">{saving ? 'Adding…' : 'Add competitor'}</button>
       {error ? <div className="md:col-span-4 text-sm text-red-400">{error}</div> : null}
     </form>
+
+    <div className="mt-8 grid gap-4 lg:grid-cols-[2fr_1fr]">
+      <div className="rounded-2xl border border-white/10 p-5">
+        <div className="flex items-center justify-between gap-4">
+          <b>Observed outliers</b>
+          <span className="text-xs opacity-50">ranked only from observed metrics</span>
+        </div>
+        <div className="space-y-3 mt-4">
+          {outliers.slice(0,10).map((item,index)=><div key={item.id} className="rounded-xl border border-white/10 p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="font-medium">#{index+1} · {item.label || item.handle || item.platform}</div>
+              <div className="text-xs opacity-60">score {Number(item.observed_score || 0).toFixed(0)}</div>
+            </div>
+            {item.hook ? <div className="mt-2 text-sm">{item.hook}</div> : null}
+            {item.body_text ? <div className="mt-2 text-sm opacity-65 line-clamp-3">{item.body_text}</div> : null}
+            <div className="text-xs opacity-50 mt-2">{item.platform} · {item.format || 'other'}</div>
+          </div>)}
+          {!outliers.length ? <div className="text-sm opacity-55">Import competitor observations from Social Audit to rank outliers.</div> : null}
+        </div>
+      </div>
+      <div className="rounded-2xl border border-white/10 p-5">
+        <b>Observed themes</b>
+        <div className="flex flex-wrap gap-2 mt-4">
+          {themes.map(([topic,count])=><span key={topic} className="rounded-full border border-white/10 px-3 py-2 text-sm">{topic} <span className="opacity-50">×{count}</span></span>)}
+          {!themes.length ? <span className="text-sm opacity-55">No topic evidence yet.</span> : null}
+        </div>
+      </div>
+    </div>
 
     <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {competitors.map((target) => (
