@@ -506,6 +506,18 @@ export class SocialIntelligenceRepository {
     return rows[0];
   }
 
+  async getPlanItem(organizationId: string, planItemId: string) {
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT i.*
+      FROM content_plan_items i
+      JOIN content_plans p ON p.id = i.plan_id
+      WHERE i.id = ${planItemId}::uuid
+        AND p.organization_id = ${organizationId}
+      LIMIT 1
+    `);
+    return rows[0] || null;
+  }
+
   performanceForBrand(organizationId: string, brandProfileId: string) {
     return this.prisma.$queryRaw<any[]>(Prisma.sql`
       SELECT
