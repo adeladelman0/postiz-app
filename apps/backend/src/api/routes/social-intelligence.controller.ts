@@ -46,6 +46,11 @@ export class SocialIntelligenceController {
     private readonly publicData: SocialIntelligencePublicDataService
   ) {}
 
+  @Get('/health')
+  health() {
+    return this.repository.health();
+  }
+
   @Get('/report.pdf')
   async report(
     @GetOrgFromRequest() org: Organization,
