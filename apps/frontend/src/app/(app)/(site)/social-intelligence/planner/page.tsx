@@ -125,6 +125,18 @@ export default function Page() {
     }
   }
 
+  async function decideApproval(id:string,status:'approved'|'changes_requested'|'rejected') {
+    setWorking(true); setMessage('');
+    try {
+      await request('/approvals/'+id,'PATCH',{status});
+      setMessage('Approval updated.');
+    } catch(e:any) {
+      setMessage(e.message || 'Could not update approval');
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function requestApproval(itemId:string) {
     setWorking(true); setMessage('');
     try { await request('/approvals','POST',{planItemId:itemId,message:'Please review this content item.'}); setMessage('Approval requested.'); }
@@ -153,6 +165,29 @@ export default function Page() {
         {data.plans.map((item)=><option key={item.id} value={item.id}>{item.horizon_days} days · {String(item.starts_at || '').slice(0,10)}</option>)}
       </select>
       {message ? <span className="ml-4 text-sm opacity-65">{message}</span> : null}
+    </div>
+
+    <div className="mt-8 rounded-2xl border border-white/10 p-5">
+      <div className="flex items-center justify-between gap-4">
+        <b>Approval queue</b>
+        <span className="text-xs opacity-50">{data.approvals.filter((item)=>item.status==='pending').length} pending</span>
+      </div>
+      <div className="grid gap-3 mt-4 md:grid-cols-2">
+        {data.approvals.map((approval)=>(
+          <div key={approval.id} className="rounded-xl border border-white/10 p-4">
+            <div className="flex justify-between gap-4">
+              <div className="font-medium">{String(approval.plan_item_id).slice(0,8)}</div>
+              <span className="text-xs opacity-60">{approval.status}</span>
+            </div>
+            {approval.message ? <div className="text-sm opacity-65 mt-2">{approval.message}</div> : null}
+            {approval.status==='pending' ? <div className="flex gap-2 mt-4 flex-wrap">
+              <button onClick={()=>decideApproval(approval.id,'approved')} disabled={working} className="rounded-lg border border-white/10 px-3 py-2 text-xs">Approve</button>
+              <button onClick={()=>decideApproval(approval.id,'changes_requested')} disabled={working} className="rounded-lg border border-white/10 px-3 py-2 text-xs">Request changes</button>
+              <button onClick={()=>decideApproval(approval.id,'rejected')} disabled={working} className="rounded-lg border border-white/10 px-3 py-2 text-xs">Reject</button>
+            </div> : null}
+          </div>
+        ))}
+      </div>
     </div>
 
     <div className="mt-8 grid gap-4">
