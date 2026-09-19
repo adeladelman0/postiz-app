@@ -183,3 +183,8 @@ export class GenerateGapsDto {
   @IsOptional() @IsArray() competitorObservations?: unknown[];
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(20) count?: number;
 }
+
+
+export class SyncPublicTargetDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) maxPosts?: number;
+}
