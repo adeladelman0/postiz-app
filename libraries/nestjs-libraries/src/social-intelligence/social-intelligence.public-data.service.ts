@@ -54,7 +54,7 @@ export class SocialIntelligencePublicDataService {
         type: ['channel'],
         maxResults: 1,
       });
-      const channelId = search.data.items?.[0]?.snippet?.channelId;
+      const channelId = search.data.items?.[0]?.id?.channelId;
       if (channelId) {
         response = await youtube.channels.list({
           part: ['snippet', 'statistics', 'contentDetails'],
