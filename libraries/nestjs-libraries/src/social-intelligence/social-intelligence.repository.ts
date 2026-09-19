@@ -156,6 +156,16 @@ export class SocialIntelligenceRepository {
     return rows[0];
   }
 
+  async getTarget(organizationId: string, targetId: string) {
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT * FROM social_targets
+      WHERE id = ${targetId}::uuid
+        AND organization_id = ${organizationId}
+      LIMIT 1
+    `);
+    return rows[0] || null;
+  }
+
   async upsertConnectedTarget(
     organizationId: string,
     input: {
