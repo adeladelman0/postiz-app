@@ -14,6 +14,7 @@ export default function Page() {
   const [planId, setPlanId] = useState('');
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState('');
+  const [approvalMessages, setApprovalMessages] = useState<Record<string,string>>({});
 
   const brand = useMemo(()=>data.brands.find((x)=>x.id===brandId)||data.brands[0],[data.brands,brandId]);
   const plan = useMemo(()=>data.plans.find((x)=>x.id===planId)||data.plans[0],[data.plans,planId]);
@@ -128,7 +129,7 @@ export default function Page() {
   async function decideApproval(id:string,status:'approved'|'changes_requested'|'rejected') {
     setWorking(true); setMessage('');
     try {
-      await request('/approvals/'+id,'PATCH',{status});
+      await request('/approvals/'+id,'PATCH',{status,message:approvalMessages[id] || undefined});
       setMessage('Approval updated.');
     } catch(e:any) {
       setMessage(e.message || 'Could not update approval');
@@ -180,10 +181,13 @@ export default function Page() {
               <span className="text-xs opacity-60">{approval.status}</span>
             </div>
             {approval.message ? <div className="text-sm opacity-65 mt-2">{approval.message}</div> : null}
-            {approval.status==='pending' ? <div className="flex gap-2 mt-4 flex-wrap">
+            {approval.status==='pending' ? <div className="mt-4">
+              <textarea value={approvalMessages[approval.id] || ''} onChange={(e)=>setApprovalMessages((current)=>({...current,[approval.id]:e.target.value}))} placeholder="Reviewer message / requested changes" className="w-full min-h-20 rounded-lg border border-white/10 bg-transparent p-3 text-sm" />
+              <div className="flex gap-2 mt-2 flex-wrap">
               <button onClick={()=>decideApproval(approval.id,'approved')} disabled={working} className="rounded-lg border border-white/10 px-3 py-2 text-xs">Approve</button>
               <button onClick={()=>decideApproval(approval.id,'changes_requested')} disabled={working} className="rounded-lg border border-white/10 px-3 py-2 text-xs">Request changes</button>
               <button onClick={()=>decideApproval(approval.id,'rejected')} disabled={working} className="rounded-lg border border-white/10 px-3 py-2 text-xs">Reject</button>
+              </div>
             </div> : null}
           </div>
         ))}
