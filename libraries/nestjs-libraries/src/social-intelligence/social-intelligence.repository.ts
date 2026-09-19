@@ -133,6 +133,72 @@ export class SocialIntelligenceRepository {
     return rows[0];
   }
 
+  async upsertConnectedTarget(
+    organizationId: string,
+    input: {
+      platform: string;
+      integrationId: string;
+      name?: string | null;
+      profile?: string | null;
+    }
+  ) {
+    const normalizedPlatform = input.platform.split('-')[0];
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      INSERT INTO social_targets
+        (organization_id,platform,profile_url,handle,external_id,source,is_competitor,label)
+      VALUES (
+        ${organizationId},
+        ${normalizedPlatform},
+        ${'postiz://integration/' + input.integrationId},
+        ${input.profile || null},
+        ${input.integrationId},
+        'connected',
+        false,
+        ${input.name || input.profile || normalizedPlatform}
+      )
+      ON CONFLICT DO NOTHING
+      RETURNING *
+    `);
+    if (rows[0]) return rows[0];
+    const existing = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT * FROM social_targets
+      WHERE organization_id = ${organizationId}
+        AND external_id = ${input.integrationId}
+        AND source = 'connected'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `);
+    return existing[0] || null;
+  }
+
+  async createConnectedAudit(
+    organizationId: string,
+    targetId: string,
+    analytics: unknown[],
+    days: number
+  ) {
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      INSERT INTO audit_runs
+        (organization_id,target_id,status,captured_at,summary,notes)
+      VALUES (
+        ${organizationId},
+        ${targetId}::uuid,
+        'completed',
+        NOW(),
+        ${JSON.stringify({
+          kind: 'connected-account-analytics',
+          days,
+          analytics,
+        })}::jsonb,
+        ${JSON.stringify([
+          'Authorized connected-account analytics imported from Postiz.',
+        ])}::jsonb
+      )
+      RETURNING *
+    `);
+    return rows[0];
+  }
+
   async createAudit(organizationId: string, input: CreateAuditRunDto) {
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       INSERT INTO audit_runs
