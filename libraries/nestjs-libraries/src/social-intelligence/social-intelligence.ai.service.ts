@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  GenerateGapsDto,
   GenerateIdeasDto,
   GeneratePlanDto,
   GenerateStrategyDto,
@@ -77,6 +78,29 @@ Brand context: ${JSON.stringify(input.brandContext || {})}
 Observed evidence: ${JSON.stringify(input.evidence || [])}
 Competitor observations: ${JSON.stringify(input.competitors || [])}
 Return an object with title, summary, pillars (array), recommendations (array), evidence (array). Recommendations must be explicit recommendations, not claimed facts.`,
+      fallback
+    );
+  }
+
+  generateGaps(input: GenerateGapsDto) {
+    const count = input.count || 6;
+    const fallback = {
+      gaps: Array.from({ length: count }).map((_, index) => ({
+        opportunity: `Recommended content opportunity ${index + 1}`,
+        why:
+          'This is a recommendation derived from the supplied competitor observations, not a claim about unobserved competitor activity.',
+        evidence: input.competitorObservations || [],
+        experiment:
+          'Publish one controlled test with a distinct hook and compare observed performance against the brand baseline.',
+      })),
+    };
+
+    return this.generateJson(
+      `Identify ${count} content gaps/opportunities for ${input.brandName}.
+Brand context: ${JSON.stringify(input.brandContext || {})}
+Observed competitor content: ${JSON.stringify(input.competitorObservations || [])}
+Return {"gaps":[{"opportunity":"","why":"","evidence":[],"experiment":""}]}.
+Every "why" must distinguish observed evidence from recommendation. Do not claim competitors never cover a topic unless the supplied observations directly support that claim.`,
       fallback
     );
   }
