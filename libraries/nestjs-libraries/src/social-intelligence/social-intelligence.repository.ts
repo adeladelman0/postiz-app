@@ -5,7 +5,7 @@ import { CreateIdeaDto, CreatePlanDto } from './social-intelligence.dto';
 
 @Injectable()
 export class SocialIntelligenceRepository {
-  constructor(private readonly prisma: PrismaRepository<'$queryRaw' | '$queryRawUnsafe'>) {}
+  constructor(private readonly prisma: PrismaRepository<'$queryRaw'>) {}
 
   async dashboard(organizationId: string) {
     const [brands, targets, audits, ideas, plans] = await Promise.all([
@@ -19,31 +19,31 @@ export class SocialIntelligenceRepository {
   }
 
   createBrand(organizationId: string, name: string, website?: string, industry?: string) {
-    return this.prisma.model.$queryRawUnsafe<any[]>(
-      'INSERT INTO brand_profiles (organization_id,name,website,industry) VALUES ($1,$2,$3,$4) RETURNING *',
-      organizationId, name, website || null, industry || null
-    );
+    return this.prisma.model.$queryRaw<any[]>(Prisma.sql`
+      INSERT INTO brand_profiles (organization_id,name,website,industry)
+      VALUES (${organizationId},${name},${website || null},${industry || null}) RETURNING *
+    `);
   }
 
   createTarget(organizationId: string, input: { brandProfileId?: string; platform: string; profileUrl: string; handle?: string; source?: string; isCompetitor?: boolean; label?: string }) {
-    return this.prisma.model.$queryRawUnsafe<any[]>(
-      'INSERT INTO social_targets (organization_id,brand_profile_id,platform,profile_url,handle,source,is_competitor,label) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',
-      organizationId, input.brandProfileId || null, input.platform, input.profileUrl, input.handle || null, input.source || 'public', !!input.isCompetitor, input.label || null
-    );
+    return this.prisma.model.$queryRaw<any[]>(Prisma.sql`
+      INSERT INTO social_targets (organization_id,brand_profile_id,platform,profile_url,handle,source,is_competitor,label)
+      VALUES (${organizationId},${input.brandProfileId || null},${input.platform},${input.profileUrl},${input.handle || null},${input.source || 'public'},${!!input.isCompetitor},${input.label || null}) RETURNING *
+    `);
   }
 
   createIdea(organizationId: string, input: CreateIdeaDto) {
-    return this.prisma.model.$queryRawUnsafe<any[]>(
-      'INSERT INTO idea_bank (organization_id,brand_profile_id,title,goal,platform,format,hook,script,caption,cta,creative_brief,evidence) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb) RETURNING *',
-      organizationId, input.brandProfileId || null, input.title, input.goal || '', input.platform, input.format || 'other', input.hook || '', input.script || null, input.caption || null, input.cta || null, input.creativeBrief || null, JSON.stringify(input.evidence || [])
-    );
+    return this.prisma.model.$queryRaw<any[]>(Prisma.sql`
+      INSERT INTO idea_bank (organization_id,brand_profile_id,title,goal,platform,format,hook,script,caption,cta,creative_brief,evidence)
+      VALUES (${organizationId},${input.brandProfileId || null},${input.title},${input.goal || ''},${input.platform},${input.format || 'other'},${input.hook || ''},${input.script || null},${input.caption || null},${input.cta || null},${input.creativeBrief || null},${JSON.stringify(input.evidence || [])}::jsonb) RETURNING *
+    `);
   }
 
   async createPlan(organizationId: string, input: CreatePlanDto) {
-    const plan = await this.prisma.model.$queryRawUnsafe<any[]>(
-      'INSERT INTO content_plans (organization_id,brand_profile_id,horizon_days,strategy_summary,starts_at) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      organizationId, input.brandProfileId || null, input.horizonDays, input.strategySummary || '', new Date(input.startsAt)
-    );
+    const plan = await this.prisma.model.$queryRaw<any[]>(Prisma.sql`
+      INSERT INTO content_plans (organization_id,brand_profile_id,horizon_days,strategy_summary,starts_at)
+      VALUES (${organizationId},${input.brandProfileId || null},${input.horizonDays},${input.strategySummary || ''},${new Date(input.startsAt)}) RETURNING *
+    `);
     return plan[0];
   }
 }
