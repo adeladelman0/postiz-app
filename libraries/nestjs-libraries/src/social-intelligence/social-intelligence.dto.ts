@@ -175,3 +175,11 @@ export class LinkPostizPostDto {
 export class SyncConnectedAuditDto {
   @Type(() => Number) @IsInt() @IsIn([7, 30, 90]) days!: 7 | 30 | 90;
 }
+
+
+export class GenerateGapsDto {
+  @IsString() brandName!: string;
+  @IsOptional() @IsObject() brandContext?: Record<string, unknown>;
+  @IsOptional() @IsArray() competitorObservations?: unknown[];
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(20) count?: number;
+}
