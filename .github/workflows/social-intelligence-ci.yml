@@ -1,0 +1,20 @@
+name: Social Intelligence CI
+on:
+  pull_request:
+    paths:
+      - 'apps/backend/src/api/**'
+      - 'apps/frontend/src/app/(app)/(site)/social-intelligence/**'
+      - 'libraries/nestjs-libraries/src/social-intelligence/**'
+  workflow_dispatch:
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec nx run backend:build
+      - run: pnpm exec nx run frontend:build
