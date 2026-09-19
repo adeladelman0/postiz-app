@@ -160,3 +160,8 @@ export class LinkPostizPostDto {
   @IsString() postizPostId!: string;
   @IsOptional() @IsIn(ideaStatuses) status?: string;
 }
+
+
+export class SyncConnectedAuditDto {
+  @Type(() => Number) @IsInt() @IsIn([7, 30, 90]) days!: 7 | 30 | 90;
+}
