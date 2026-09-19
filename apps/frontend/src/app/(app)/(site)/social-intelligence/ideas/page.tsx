@@ -42,6 +42,11 @@ export default function Page() {
       const generated = await request<any>('/generate/ideas','POST',{
         brandName: selectedBrand.name,
         goal,
+        brandContext: {
+          industry: selectedBrand.industry,
+          audience: selectedBrand.audience || {},
+          voice: selectedBrand.voice || {},
+        },
         pillars: strategy?.pillars || [],
         evidence: data.audits.slice(0,20),
         count: 12,
