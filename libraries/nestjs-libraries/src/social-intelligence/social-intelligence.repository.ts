@@ -250,7 +250,7 @@ export class SocialIntelligenceRepository {
         for (const metric of item.metrics || []) {
           await tx.$queryRaw(Prisma.sql`
             INSERT INTO content_metrics
-              (snapshot_id,metric_key,value,unit,evidence,confidence,observed_at)
+              (content_snapshot_id,metric_key,metric_value,unit,evidence,confidence,observed_at)
             VALUES (
               ${content.id}::uuid,
               ${metric.key},
@@ -260,7 +260,7 @@ export class SocialIntelligenceRepository {
               ${metric.confidence ?? null},
               ${new Date(metric.observedAt)}
             )
-            ON CONFLICT (snapshot_id,metric_key,evidence)
+            ON CONFLICT (content_snapshot_id,metric_key,evidence)
             DO UPDATE SET
               value = EXCLUDED.value,
               unit = EXCLUDED.unit,
@@ -292,17 +292,17 @@ export class SocialIntelligenceRepository {
         st.platform,
         COALESCE(SUM(
           CASE cm.metric_key
-            WHEN 'views' THEN cm.value
-            WHEN 'likes' THEN cm.value * 2
-            WHEN 'comments' THEN cm.value * 4
-            WHEN 'shares' THEN cm.value * 6
-            WHEN 'saves' THEN cm.value * 6
+            WHEN 'views' THEN cm.metric_value
+            WHEN 'likes' THEN cm.metric_value * 2
+            WHEN 'comments' THEN cm.metric_value * 4
+            WHEN 'shares' THEN cm.metric_value * 6
+            WHEN 'saves' THEN cm.metric_value * 6
             ELSE 0
           END
         ) FILTER (WHERE cm.evidence = 'observed'), 0) AS observed_score
       FROM content_snapshots cs
       JOIN social_targets st ON st.id = cs.target_id
-      LEFT JOIN content_metrics cm ON cm.snapshot_id = cs.id
+      LEFT JOIN content_metrics cm ON cm.content_snapshot_id = cs.id
       WHERE cs.organization_id = ${organizationId}
         AND st.is_competitor = true
       GROUP BY cs.id, st.id
