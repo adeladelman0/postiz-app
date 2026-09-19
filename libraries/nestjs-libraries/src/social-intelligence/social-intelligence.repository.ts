@@ -394,6 +394,26 @@ export class SocialIntelligenceRepository {
     return rows[0];
   }
 
+  performanceForBrand(organizationId: string, brandProfileId: string) {
+    return this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT
+        ps.id,
+        ps.platform,
+        ps.metrics,
+        ps.observed_at,
+        i.format,
+        i.status,
+        i.postiz_post_id
+      FROM performance_snapshots ps
+      LEFT JOIN content_plan_items i ON i.id = ps.plan_item_id
+      LEFT JOIN content_plans p ON p.id = i.plan_id
+      WHERE ps.organization_id = ${organizationId}
+        AND p.brand_profile_id = ${brandProfileId}::uuid
+      ORDER BY ps.observed_at DESC
+      LIMIT 500
+    `);
+  }
+
   async createInsight(
     organizationId: string,
     input: CreateLearningInsightDto
