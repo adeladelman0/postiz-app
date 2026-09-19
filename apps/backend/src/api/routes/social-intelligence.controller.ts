@@ -80,6 +80,26 @@ export class SocialIntelligenceController {
     return this.repository.createTarget(org.id, body);
   }
 
+  @Get('/competitors/outliers')
+  competitorOutliers(@GetOrgFromRequest() org: Organization) {
+    return this.repository.competitorOutliers(org.id);
+  }
+
+  @Post('/targets/:targetId/observations')
+  async ingestObservations(
+    @GetOrgFromRequest() org: Organization,
+    @Param('targetId') targetId: string,
+    @Body() snapshot: AuditSnapshot
+  ) {
+    const summary = this.intelligence.summarize(snapshot);
+    return this.repository.ingestAuditSnapshot(
+      org.id,
+      targetId,
+      snapshot,
+      summary
+    );
+  }
+
   @Post('/connected/:integrationId/audit')
   async syncConnectedAudit(
     @GetOrgFromRequest() org: Organization,
