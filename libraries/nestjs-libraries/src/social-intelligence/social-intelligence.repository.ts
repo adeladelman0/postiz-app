@@ -262,7 +262,7 @@ export class SocialIntelligenceRepository {
             )
             ON CONFLICT (content_snapshot_id,metric_key,evidence)
             DO UPDATE SET
-              value = EXCLUDED.value,
+              metric_value = EXCLUDED.metric_value,
               unit = EXCLUDED.unit,
               confidence = EXCLUDED.confidence,
               observed_at = EXCLUDED.observed_at
