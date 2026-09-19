@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSocialIntelligence } from '@gitroom/frontend/components/social-intelligence/use.social-intelligence';
 
 export default function Page() {
@@ -9,6 +9,8 @@ export default function Page() {
   const [brandId, setBrandId] = useState('');
   const [goal, setGoal] = useState('');
   const [generated, setGenerated] = useState<any>(null);
+  const [audience, setAudience] = useState('');
+  const [voice, setVoice] = useState('');
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState('');
 
@@ -16,6 +18,27 @@ export default function Page() {
     () => data.brands.find((brand) => brand.id === brandId) || data.brands[0],
     [data.brands, brandId]
   );
+
+  useEffect(() => {
+    setAudience(selectedBrand?.audience?.description || '');
+    setVoice(selectedBrand?.voice?.description || '');
+  }, [selectedBrand?.id]);
+
+  async function saveBrandContext() {
+    if (!selectedBrand) return;
+    setWorking(true); setMessage('');
+    try {
+      await request('/brands/' + selectedBrand.id, 'PATCH', {
+        audience: { description: audience },
+        voice: { description: voice },
+      });
+      setMessage('Brand context saved.');
+    } catch (e:any) {
+      setMessage(e.message || 'Could not save brand context');
+    } finally {
+      setWorking(false);
+    }
+  }
 
   async function generate() {
     if (!selectedBrand) return;
@@ -25,6 +48,11 @@ export default function Page() {
       const result = await request<any>('/generate/strategy', 'POST', {
         brandName: selectedBrand.name,
         goal,
+        brandContext: {
+          industry: selectedBrand.industry,
+          audience: selectedBrand.audience || { description: audience },
+          voice: selectedBrand.voice || { description: voice },
+        },
         evidence: data.audits.slice(0, 20),
         competitors: data.targets.filter((target) => target.is_competitor).slice(0, 20),
       });
@@ -62,7 +90,16 @@ export default function Page() {
     <h1 className="text-3xl font-semibold mt-4">Strategy</h1>
     <p className="opacity-65 mt-2 max-w-3xl">Build evidence-backed positioning, pillars and experiments with Ollama-first AI and a no-fabrication fallback.</p>
 
-    <div className="mt-8 rounded-2xl border border-white/10 p-5 grid gap-3 md:grid-cols-[260px_1fr_auto]">
+    <div className="mt-8 rounded-2xl border border-white/10 p-5">
+      <div className="font-medium">Brand context</div>
+      <div className="grid gap-3 md:grid-cols-2 mt-3">
+        <textarea value={audience} onChange={(e)=>setAudience(e.target.value)} placeholder="Audience: who they are, needs, objections, buying context" className="min-h-28 rounded-xl border border-white/10 bg-transparent px-4 py-3" />
+        <textarea value={voice} onChange={(e)=>setVoice(e.target.value)} placeholder="Voice: tone, vocabulary, do / don't rules" className="min-h-28 rounded-xl border border-white/10 bg-transparent px-4 py-3" />
+      </div>
+      <button onClick={saveBrandContext} disabled={!selectedBrand||working} className="mt-3 rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-50">Save brand context</button>
+    </div>
+
+    <div className="mt-6 rounded-2xl border border-white/10 p-5 grid gap-3 md:grid-cols-[260px_1fr_auto]">
       <select value={selectedBrand?.id || ''} onChange={(e)=>setBrandId(e.target.value)} className="rounded-xl border border-white/10 bg-transparent px-4 py-3">
         {!data.brands.length ? <option value="">Create a brand from the dashboard first</option> : null}
         {data.brands.map((brand)=><option key={brand.id} value={brand.id}>{brand.name}</option>)}
