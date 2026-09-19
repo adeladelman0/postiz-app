@@ -21,6 +21,7 @@ import {
   GenerateIdeasDto,
   GeneratePlanDto,
   GenerateStrategyDto,
+  LinkPostizPostDto,
   UpdateIdeaStatusDto,
 } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.dto';
 
@@ -105,6 +106,15 @@ export class SocialIntelligenceController {
     @Body() body: CreatePlanItemDto
   ) {
     return this.repository.createPlanItem(org.id, body);
+  }
+
+  @Patch('/plan-items/:id/postiz')
+  linkPlanItemToPostiz(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: LinkPostizPostDto
+  ) {
+    return this.repository.linkPlanItemToPostiz(org.id, id, body);
   }
 
   @Post('/approvals')
