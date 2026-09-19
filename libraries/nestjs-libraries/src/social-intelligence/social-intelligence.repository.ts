@@ -7,6 +7,7 @@ import {
   CreateIdeaDto,
   CreateLearningInsightDto,
   CreatePerformanceSnapshotDto,
+  LinkPostizPostDto,
   CreatePlanDto,
   CreatePlanItemDto,
   CreateStrategyDto,
@@ -241,6 +242,26 @@ export class SocialIntelligenceRepository {
       WHERE p.id = ${input.planId}::uuid
         AND p.organization_id = ${organizationId}
       RETURNING *
+    `);
+    return rows[0] || null;
+  }
+
+  async linkPlanItemToPostiz(
+    organizationId: string,
+    planItemId: string,
+    input: LinkPostizPostDto
+  ) {
+    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      UPDATE content_plan_items i
+      SET
+        postiz_post_id = ${input.postizPostId},
+        status = ${input.status || 'approved'},
+        updated_at = NOW()
+      FROM content_plans p
+      WHERE i.id = ${planItemId}::uuid
+        AND p.id = i.plan_id
+        AND p.organization_id = ${organizationId}
+      RETURNING i.*
     `);
     return rows[0] || null;
   }
