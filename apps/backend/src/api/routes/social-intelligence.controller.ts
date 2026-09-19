@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Res } from '@nestjs/common';
 import { Organization, User } from '@prisma/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -6,6 +6,8 @@ import { SocialIntelligenceService } from '@gitroom/nestjs-libraries/social-inte
 import { SocialIntelligenceRepository } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.repository';
 import { SocialIntelligenceAiService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.ai.service';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import { SocialIntelligenceReportService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.report.service';
+import { Response } from 'express';
 import { AuditSnapshot } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.types';
 import {
   CreateApprovalRequestDto,
@@ -33,8 +35,24 @@ export class SocialIntelligenceController {
     private readonly intelligence: SocialIntelligenceService,
     private readonly repository: SocialIntelligenceRepository,
     private readonly ai: SocialIntelligenceAiService,
-    private readonly integrations: IntegrationService
+    private readonly integrations: IntegrationService,
+    private readonly reports: SocialIntelligenceReportService
   ) {}
+
+  @Get('/report.pdf')
+  async report(
+    @GetOrgFromRequest() org: Organization,
+    @Res({ passthrough: false }) res: Response
+  ) {
+    const data = await this.repository.dashboard(org.id);
+    const pdf = this.reports.createDashboardReport(data);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="social-intelligence-report.pdf"'
+    );
+    res.end(pdf);
+  }
 
   @Get('/dashboard')
   dashboard(@GetOrgFromRequest() org: Organization) {
