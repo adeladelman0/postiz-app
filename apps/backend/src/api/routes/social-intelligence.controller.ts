@@ -4,6 +4,7 @@ import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.reque
 import { SocialIntelligenceService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.service';
 import { SocialIntelligenceRepository } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.repository';
 import { AuditSnapshot } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.types';
+import { CreateBrandDto, CreateIdeaDto, CreatePlanDto, CreateSocialTargetDto } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.dto';
 
 @Controller('/social-intelligence')
 export class SocialIntelligenceController {
@@ -20,23 +21,23 @@ export class SocialIntelligenceController {
   @Post('/brands')
   createBrand(
     @GetOrgFromRequest() org: Organization,
-    @Body() body: { name: string; website?: string; industry?: string }
+    @Body() body: CreateBrandDto
   ) {
     return this.repository.createBrand(org.id, body.name, body.website, body.industry);
   }
 
   @Post('/targets')
-  createTarget(@GetOrgFromRequest() org: Organization, @Body() body: any) {
+  createTarget(@GetOrgFromRequest() org: Organization, @Body() body: CreateSocialTargetDto) {
     return this.repository.createTarget(org.id, body);
   }
 
   @Post('/ideas')
-  createIdea(@GetOrgFromRequest() org: Organization, @Body() body: any) {
+  createIdea(@GetOrgFromRequest() org: Organization, @Body() body: CreateIdeaDto) {
     return this.repository.createIdea(org.id, body);
   }
 
   @Post('/plans')
-  createPlan(@GetOrgFromRequest() org: Organization, @Body() body: any) {
+  createPlan(@GetOrgFromRequest() org: Organization, @Body() body: CreatePlanDto) {
     return this.repository.createPlan(org.id, body);
   }
 
