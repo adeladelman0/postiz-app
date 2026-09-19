@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { FormEvent, useState } from 'react';
 import { useSocialIntelligence } from '@gitroom/frontend/components/social-intelligence/use.social-intelligence';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 
 const modules = [
   ['Social Audit', 'Analyze connected/public profiles and surface observed performance signals.', '/social-intelligence/audit', 'audits'],
@@ -15,9 +16,22 @@ const modules = [
 
 export default function SocialIntelligencePage() {
   const { data, isLoading, error, request } = useSocialIntelligence();
+  const fetcher = useFetch();
   const [brandName, setBrandName] = useState('');
   const [industry, setIndustry] = useState('');
   const [saving, setSaving] = useState(false);
+
+  async function downloadReport() {
+    const response = await fetcher('/social-intelligence/report.pdf');
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'social-intelligence-report.pdf';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function createBrand(event: FormEvent) {
     event.preventDefault();
@@ -37,12 +51,15 @@ export default function SocialIntelligencePage() {
 
   return (
     <div className="p-6 md:p-10 max-w-[1400px] mx-auto w-full">
-      <div className="mb-8">
-        <div className="text-sm opacity-60 mb-2">Postiz Intelligence</div>
-        <h1 className="text-3xl md:text-4xl font-semibold">Social Intelligence</h1>
-        <p className="mt-3 opacity-70 max-w-3xl">
-          Audit brands, study competitors, create evidence-backed strategies and turn them into content plans that flow into publishing.
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-6">
+        <div>
+          <div className="text-sm opacity-60 mb-2">Postiz Intelligence</div>
+          <h1 className="text-3xl md:text-4xl font-semibold">Social Intelligence</h1>
+          <p className="mt-3 opacity-70 max-w-3xl">
+            Audit brands, study competitors, create evidence-backed strategies and turn them into content plans that flow into publishing.
+          </p>
+        </div>
+        <button onClick={downloadReport} className="rounded-xl border border-white/10 px-4 py-3 text-sm whitespace-nowrap">Download PDF report</button>
       </div>
 
       {error ? (
