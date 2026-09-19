@@ -1,4 +1,4 @@
-import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Query, Res } from '@nestjs/common';
 import { Organization, User } from '@prisma/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -128,8 +128,11 @@ export class SocialIntelligenceController {
   }
 
   @Get('/competitors/outliers')
-  competitorOutliers(@GetOrgFromRequest() org: Organization) {
-    return this.repository.competitorOutliers(org.id);
+  competitorOutliers(
+    @GetOrgFromRequest() org: Organization,
+    @Query('brandProfileId') brandProfileId?: string
+  ) {
+    return this.repository.competitorOutliers(org.id, brandProfileId);
   }
 
   @Post('/targets/:targetId/observations')
