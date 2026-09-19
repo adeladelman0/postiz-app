@@ -52,6 +52,22 @@ export default function Page() {
     finally{setWorking(false);}
   }
 
+  async function syncAll(){
+    const linked=data.planItems.filter((item)=>item.postiz_post_id);
+    if(!linked.length)return;
+    setWorking(true); setMessage('');
+    try{
+      for(const item of linked){
+        await request('/performance/sync/'+item.id,'POST',{days:30});
+      }
+      if(brand){
+        await request('/learning/'+brand.id+'/recompute','POST',{});
+      }
+      setMessage('All linked Postiz performance was synced and the learning loop was refreshed.');
+    }catch(e:any){setMessage(e.message||'Could not sync all performance');}
+    finally{setWorking(false);}
+  }
+
   async function syncPostiz(planItemId:string){
     setWorking(true); setMessage('');
     try{
@@ -79,7 +95,7 @@ export default function Page() {
     <p className="opacity-65 mt-2 max-w-3xl">Observed post metrics become evidence for the next strategy, idea batch and plan.</p>
 
     <div className="mt-8 rounded-2xl border border-white/10 p-5">
-      <div className="flex justify-between gap-4"><b>Published Postiz sync</b><span className="text-xs opacity-50">official connected-account analytics</span></div>
+      <div className="flex justify-between gap-4 items-center"><div><b>Published Postiz sync</b><div className="text-xs opacity-50 mt-1">official connected-account analytics</div></div><button onClick={syncAll} disabled={working || !data.planItems.some((item)=>item.postiz_post_id)} className="rounded-xl bg-white text-black px-4 py-2 text-sm disabled:opacity-50">Sync all + learn</button></div>
       <div className="flex flex-wrap gap-2 mt-4">
         {data.planItems.filter((item)=>item.postiz_post_id).map((item)=><button key={item.id} onClick={()=>syncPostiz(item.id)} disabled={working} className="rounded-xl border border-white/10 px-4 py-3 text-sm disabled:opacity-50">{item.platform} · {item.hook || String(item.id).slice(0,8)}</button>)}
         {!data.planItems.some((item)=>item.postiz_post_id) ? <div className="text-sm opacity-55">Create and link Postiz drafts from the Planner first.</div> : null}
