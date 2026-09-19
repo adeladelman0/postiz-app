@@ -143,6 +143,16 @@ export class SocialIntelligenceRepository {
     }
   ) {
     const normalizedPlatform = input.platform.split('-')[0];
+    const existing = await this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT * FROM social_targets
+      WHERE organization_id = ${organizationId}
+        AND external_id = ${input.integrationId}
+        AND source = 'connected'
+      ORDER BY created_at DESC
+      LIMIT 1
+    `);
+    if (existing[0]) return existing[0];
+
     const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
       INSERT INTO social_targets
         (organization_id,platform,profile_url,handle,external_id,source,is_competitor,label)
@@ -156,19 +166,9 @@ export class SocialIntelligenceRepository {
         false,
         ${input.name || input.profile || normalizedPlatform}
       )
-      ON CONFLICT DO NOTHING
       RETURNING *
     `);
-    if (rows[0]) return rows[0];
-    const existing = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-      SELECT * FROM social_targets
-      WHERE organization_id = ${organizationId}
-        AND external_id = ${input.integrationId}
-        AND source = 'connected'
-      ORDER BY created_at DESC
-      LIMIT 1
-    `);
-    return existing[0] || null;
+    return rows[0] || null;
   }
 
   async createConnectedAudit(
