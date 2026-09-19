@@ -73,6 +73,7 @@ export class SocialIntelligenceAiService {
     return this.generateJson(
       `Create a social media strategy for ${input.brandName}.
 Goal: ${input.goal || 'not specified'}
+Brand context: ${JSON.stringify(input.brandContext || {})}
 Observed evidence: ${JSON.stringify(input.evidence || [])}
 Competitor observations: ${JSON.stringify(input.competitors || [])}
 Return an object with title, summary, pillars (array), recommendations (array), evidence (array). Recommendations must be explicit recommendations, not claimed facts.`,
@@ -110,6 +111,7 @@ Return an object with title, summary, pillars (array), recommendations (array), 
     return this.generateJson(
       `Generate ${count} content ideas for ${input.brandName}.
 Goal: ${input.goal || 'not specified'}
+Brand context: ${JSON.stringify(input.brandContext || {})}
 Content pillars: ${JSON.stringify(pillars)}
 Observed evidence: ${JSON.stringify(input.evidence || [])}
 Return {"ideas":[...]} where every idea contains title, goal, platform, format, hook, script, caption, cta, creativeBrief, evidence. Do not claim performance that was not observed.`,
