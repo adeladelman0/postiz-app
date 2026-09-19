@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Res } from '@nestjs/common';
+import { Body, Controller, Get, NotFoundException, Param, Patch, Post, Res } from '@nestjs/common';
 import { Organization, User } from '@prisma/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
 import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
@@ -8,6 +8,7 @@ import { SocialIntelligenceAiService } from '@gitroom/nestjs-libraries/social-in
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
 import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { SocialIntelligenceReportService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.report.service';
+import { SocialIntelligencePublicDataService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.public-data.service';
 import { Response } from 'express';
 import { AuditSnapshot } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.types';
 import {
@@ -28,6 +29,7 @@ import {
   GenerateStrategyDto,
   LinkPostizPostDto,
   SyncConnectedAuditDto,
+  SyncPublicTargetDto,
   UpdateBrandDto,
   UpdateIdeaStatusDto,
 } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.dto';
@@ -40,7 +42,8 @@ export class SocialIntelligenceController {
     private readonly ai: SocialIntelligenceAiService,
     private readonly integrations: IntegrationService,
     private readonly posts: PostsService,
-    private readonly reports: SocialIntelligenceReportService
+    private readonly reports: SocialIntelligenceReportService,
+    private readonly publicData: SocialIntelligencePublicDataService
   ) {}
 
   @Get('/report.pdf')
@@ -91,6 +94,37 @@ export class SocialIntelligenceController {
     @Body() body: CreateSocialTargetDto
   ) {
     return this.repository.createTarget(org.id, body);
+  }
+
+  @Post('/targets/:targetId/public-sync')
+  async syncPublicTarget(
+    @GetOrgFromRequest() org: Organization,
+    @Param('targetId') targetId: string,
+    @Body() body: SyncPublicTargetDto
+  ) {
+    const target = await this.repository.getTarget(org.id, targetId);
+    if (!target) {
+      throw new NotFoundException('Social target not found');
+    }
+
+    const snapshot = await this.publicData.analyze(
+      {
+        platform: target.platform,
+        profileUrl: target.profile_url,
+        handle: target.handle || undefined,
+        externalId: target.external_id || undefined,
+        source: 'public',
+      },
+      body.maxPosts || 25
+    );
+    const summary = this.intelligence.summarize(snapshot);
+    const audit = await this.repository.ingestAuditSnapshot(
+      org.id,
+      targetId,
+      snapshot,
+      summary
+    );
+    return { audit, summary };
   }
 
   @Get('/competitors/outliers')
