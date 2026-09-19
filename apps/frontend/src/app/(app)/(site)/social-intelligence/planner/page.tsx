@@ -1,11 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSocialIntelligence } from '@gitroom/frontend/components/social-intelligence/use.social-intelligence';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 
 export default function Page() {
   const { data, request } = useSocialIntelligence();
+  const fetcher = useFetch();
+  const [integrations, setIntegrations] = useState<any[]>([]);
   const [brandId, setBrandId] = useState('');
   const [horizon, setHorizon] = useState(30);
   const [planId, setPlanId] = useState('');
@@ -15,6 +18,13 @@ export default function Page() {
   const brand = useMemo(()=>data.brands.find((x)=>x.id===brandId)||data.brands[0],[data.brands,brandId]);
   const plan = useMemo(()=>data.plans.find((x)=>x.id===planId)||data.plans[0],[data.plans,planId]);
   const approvedIdeas = data.ideas.filter((idea)=>['approved','scheduled'].includes(idea.status));
+
+  useEffect(() => {
+    fetcher('/integrations/list')
+      .then((response) => response.json())
+      .then((payload) => setIntegrations(payload.integrations || []))
+      .catch(() => setIntegrations([]));
+  }, [fetcher]);
 
   async function createPlan() {
     if (!brand) return;
@@ -69,6 +79,52 @@ export default function Page() {
     finally{setWorking(false);}
   }
 
+  async function createPostizDraft(item:any) {
+    const integration = integrations.find((candidate) => {
+      const identifier = String(candidate.identifier || candidate.providerIdentifier || '').toLowerCase();
+      const normalized = identifier.split('-')[0];
+      return normalized === String(item.platform || '').toLowerCase() && !candidate.disabled;
+    });
+
+    if (!integration) {
+      setMessage('Connect a matching ' + item.platform + ' channel in Postiz first.');
+      return;
+    }
+
+    setWorking(true); setMessage('');
+    try {
+      const content = [item.hook, item.script, item.caption, item.cta].filter(Boolean).join('\n\n');
+      const group = 'si' + String(item.id).replace(/-/g, '').slice(0, 8);
+      const response = await fetcher('/posts', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'draft',
+          shortLink: false,
+          date: new Date(item.planned_at).toISOString().slice(0, 19),
+          posts: [{
+            integration: { id: integration.id },
+            group,
+            settings: { __type: integration.identifier || integration.providerIdentifier },
+            value: [{ content: content || 'Draft content', delay: 0, image: [] }],
+          }],
+        }),
+      });
+      const created = await response.json();
+      if (!response.ok || !created?.[0]?.postId) {
+        throw new Error(created?.message || 'Could not create Postiz draft');
+      }
+      await request('/plan-items/' + item.id + '/postiz', 'PATCH', {
+        postizPostId: created[0].postId,
+        status: 'approved',
+      });
+      setMessage('Postiz draft created. Open the calendar to add media/settings and schedule it.');
+    } catch(e:any) {
+      setMessage(e.message || 'Could not create Postiz draft');
+    } finally {
+      setWorking(false);
+    }
+  }
+
   async function requestApproval(itemId:string) {
     setWorking(true); setMessage('');
     try { await request('/approvals','POST',{planItemId:itemId,message:'Please review this content item.'}); setMessage('Approval requested.'); }
@@ -112,7 +168,11 @@ export default function Page() {
             {item.caption ? <div className="text-sm opacity-65 mt-2">{item.caption}</div> : null}
             <div className="text-xs opacity-50 mt-2">Status: {item.status}</div>
           </div>
-          <button onClick={()=>requestApproval(item.id)} disabled={working} className="rounded-xl border border-white/10 px-4 py-2 text-sm">Request approval</button>
+          <div className="flex flex-col gap-2">
+            <button onClick={()=>requestApproval(item.id)} disabled={working} className="rounded-xl border border-white/10 px-4 py-2 text-sm">Request approval</button>
+            <button onClick={()=>createPostizDraft(item)} disabled={working || !!item.postiz_post_id} className="rounded-xl border border-white/10 px-4 py-2 text-sm disabled:opacity-50">{item.postiz_post_id ? 'Postiz draft linked' : 'Create Postiz draft'}</button>
+            {item.postiz_post_id ? <Link href="/launches" className="text-xs text-center underline opacity-60">Open calendar</Link> : null}
+          </div>
         </div>
       ))}
     </div>
