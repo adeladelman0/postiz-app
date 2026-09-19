@@ -39,6 +39,14 @@ export class CreateBrandDto {
   @IsOptional() @IsString() industry?: string;
 }
 
+export class UpdateBrandDto {
+  @IsOptional() @IsString() name?: string;
+  @IsOptional() @IsUrl({ require_tld: false }) website?: string;
+  @IsOptional() @IsString() industry?: string;
+  @IsOptional() @IsObject() audience?: Record<string, unknown>;
+  @IsOptional() @IsObject() voice?: Record<string, unknown>;
+}
+
 export class CreateSocialTargetDto {
   @IsOptional() @IsString() brandProfileId?: string;
   @IsIn(socialPlatforms) platform!: string;
