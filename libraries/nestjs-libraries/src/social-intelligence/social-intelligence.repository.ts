@@ -493,19 +493,33 @@ export class SocialIntelligenceRepository {
     approvalId: string,
     input: DecideApprovalDto
   ) {
-    const rows = await this.prisma.$queryRaw<any[]>(Prisma.sql`
-      UPDATE approval_requests
-      SET
-        status = ${input.status},
-        reviewer_id = ${reviewerId},
-        message = ${input.message || null},
-        decided_at = NOW(),
-        updated_at = NOW()
-      WHERE id = ${approvalId}::uuid
-        AND organization_id = ${organizationId}
-      RETURNING *
-    `);
-    return rows[0] || null;
+    return this.prisma.$transaction(async (tx) => {
+      const rows = await tx.$queryRaw<any[]>(Prisma.sql`
+        UPDATE approval_requests
+        SET
+          status = ${input.status},
+          reviewer_id = ${reviewerId},
+          message = ${input.message || null},
+          decided_at = NOW(),
+          updated_at = NOW()
+        WHERE id = ${approvalId}::uuid
+          AND organization_id = ${organizationId}
+        RETURNING *
+      `);
+      const approval = rows[0];
+      if (!approval) return null;
+
+      const nextStatus =
+        input.status === 'approved' ? 'approved' : 'production';
+
+      await tx.$queryRaw(Prisma.sql`
+        UPDATE content_plan_items
+        SET status = ${nextStatus}, updated_at = NOW()
+        WHERE id = ${approval.plan_item_id}::uuid
+      `);
+
+      return approval;
+    });
   }
 
   async createPerformance(
