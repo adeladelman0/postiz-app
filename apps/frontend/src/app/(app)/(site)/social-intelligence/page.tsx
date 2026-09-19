@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { FormEvent, useState } from 'react';
 import { useSocialIntelligence } from '@gitroom/frontend/components/social-intelligence/use.social-intelligence';
 
 const modules = [
@@ -13,7 +14,26 @@ const modules = [
 ] as const;
 
 export default function SocialIntelligencePage() {
-  const { data, isLoading, error } = useSocialIntelligence();
+  const { data, isLoading, error, request } = useSocialIntelligence();
+  const [brandName, setBrandName] = useState('');
+  const [industry, setIndustry] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function createBrand(event: FormEvent) {
+    event.preventDefault();
+    if (!brandName.trim()) return;
+    setSaving(true);
+    try {
+      await request('/brands', 'POST', {
+        name: brandName.trim(),
+        industry: industry.trim() || undefined,
+      });
+      setBrandName('');
+      setIndustry('');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="p-6 md:p-10 max-w-[1400px] mx-auto w-full">
@@ -30,6 +50,12 @@ export default function SocialIntelligencePage() {
           Social Intelligence data could not be loaded.
         </div>
       ) : null}
+
+      <form onSubmit={createBrand} className="mb-8 rounded-2xl border border-white/10 p-5 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
+        <input value={brandName} onChange={(e)=>setBrandName(e.target.value)} required placeholder="Brand / client name" className="rounded-xl border border-white/10 bg-transparent px-4 py-3" />
+        <input value={industry} onChange={(e)=>setIndustry(e.target.value)} placeholder="Industry" className="rounded-xl border border-white/10 bg-transparent px-4 py-3" />
+        <button disabled={saving} className="rounded-xl bg-white text-black px-5 py-3 font-medium disabled:opacity-50">{saving ? 'Saving…' : 'Add brand'}</button>
+      </form>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {modules.map(([title, description, href, key]) => (
