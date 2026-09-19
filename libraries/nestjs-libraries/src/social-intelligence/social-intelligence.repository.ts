@@ -306,7 +306,7 @@ export class SocialIntelligenceRepository {
     });
   }
 
-  competitorOutliers(organizationId: string) {
+  competitorOutliers(organizationId: string, brandProfileId?: string) {
     return this.prisma.$queryRaw<any[]>(Prisma.sql`
       WITH latest_content AS (
         SELECT DISTINCT ON (cs.target_id, cs.external_id)
@@ -315,6 +315,10 @@ export class SocialIntelligenceRepository {
         JOIN social_targets st ON st.id = cs.target_id
         WHERE cs.organization_id = ${organizationId}
           AND st.is_competitor = true
+          AND (
+            ${brandProfileId || null}::uuid IS NULL
+            OR st.brand_profile_id = ${brandProfileId || null}::uuid
+          )
         ORDER BY
           cs.target_id,
           cs.external_id,
