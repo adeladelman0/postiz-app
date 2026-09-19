@@ -199,6 +199,25 @@ export class SocialIntelligenceController {
     return this.repository.createPerformance(org.id, body);
   }
 
+  @Post('/learning/:brandProfileId/recompute')
+  async recomputeLearning(
+    @GetOrgFromRequest() org: Organization,
+    @Param('brandProfileId') brandProfileId: string
+  ) {
+    const performance = await this.repository.performanceForBrand(
+      org.id,
+      brandProfileId
+    );
+    const learning = this.intelligence.derivePerformanceLearning(performance);
+    return this.repository.createInsight(org.id, {
+      brandProfileId,
+      insightType: learning.insightType,
+      insight: learning.insight,
+      evidence: learning.evidence,
+      confidence: learning.confidence,
+    });
+  }
+
   @Post('/insights')
   createInsight(
     @GetOrgFromRequest() org: Organization,
