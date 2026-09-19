@@ -38,6 +38,55 @@ export class SocialIntelligenceService {
     };
   }
 
+  derivePerformanceLearning(rows: any[]) {
+    if (!rows.length) {
+      return {
+        insightType: 'performance-learning',
+        insight: 'Not enough published performance evidence yet.',
+        evidence: [],
+        confidence: 0,
+      };
+    }
+
+    const groups = new Map<string, { score: number; count: number; ids: string[] }>();
+    for (const row of rows) {
+      const metrics = row.metrics || {};
+      const views = Number(metrics.views || 0);
+      const likes = Number(metrics.likes || 0);
+      const comments = Number(metrics.comments || 0);
+      const shares = Number(metrics.shares || 0);
+      const saves = Number(metrics.saves || 0);
+      const interactions = likes + comments * 2 + shares * 3 + saves * 3;
+      const score = views > 0 ? interactions / views : interactions;
+      const key = [row.platform || 'unknown', row.format || 'other'].join(' / ');
+      const current = groups.get(key) || { score: 0, count: 0, ids: [] };
+      current.score += score;
+      current.count += 1;
+      current.ids.push(row.id);
+      groups.set(key, current);
+    }
+
+    const ranked = [...groups.entries()]
+      .map(([key, value]) => ({
+        key,
+        average: value.score / value.count,
+        count: value.count,
+        ids: value.ids,
+      }))
+      .sort((a, b) => b.average - a.average);
+
+    const best = ranked[0];
+    return {
+      insightType: 'performance-learning',
+      insight:
+        best.count === 1
+          ? `${best.key} currently has the strongest observed interaction score, based on one snapshot. Treat this as an early signal and test it again.`
+          : `${best.key} has the strongest observed average interaction score across ${best.count} snapshots. Prioritize another controlled test before increasing its share of the plan.`,
+      evidence: best.ids,
+      confidence: Math.min(0.9, 0.35 + best.count * 0.08),
+    };
+  }
+
   observedMetric(
     key: string,
     value: number,
