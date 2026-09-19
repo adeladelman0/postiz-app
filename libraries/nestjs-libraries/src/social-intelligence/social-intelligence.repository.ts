@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { SocialIntelligenceDatabase } from './social-intelligence.database';
+import { AuditSnapshot } from './social-intelligence.types';
 import {
   CreateApprovalRequestDto,
   CreateAuditRunDto,
@@ -197,6 +198,117 @@ export class SocialIntelligenceRepository {
       RETURNING *
     `);
     return rows[0];
+  }
+
+  async ingestAuditSnapshot(
+    organizationId: string,
+    targetId: string,
+    snapshot: AuditSnapshot,
+    summary: unknown
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const audits = await tx.$queryRaw<any[]>(Prisma.sql`
+        INSERT INTO audit_runs
+          (organization_id,target_id,status,captured_at,summary,notes)
+        VALUES (
+          ${organizationId},
+          ${targetId}::uuid,
+          'completed',
+          ${new Date(snapshot.capturedAt)},
+          ${JSON.stringify({
+            summary,
+            profileMetrics: snapshot.profileMetrics || [],
+          })}::jsonb,
+          ${JSON.stringify(snapshot.notes || [])}::jsonb
+        )
+        RETURNING *
+      `);
+      const audit = audits[0];
+
+      for (const item of snapshot.content || []) {
+        const contentRows = await tx.$queryRaw<any[]>(Prisma.sql`
+          INSERT INTO content_snapshots
+            (organization_id,audit_run_id,target_id,external_id,url,published_at,format,body_text,hook,cta,topics,raw_data)
+          VALUES (
+            ${organizationId},
+            ${audit.id}::uuid,
+            ${targetId}::uuid,
+            ${item.externalId},
+            ${item.url || null},
+            ${item.publishedAt ? new Date(item.publishedAt) : null},
+            ${item.format || 'other'},
+            ${item.text || null},
+            ${item.hook || null},
+            ${item.cta || null},
+            ${JSON.stringify(item.topics || [])}::jsonb,
+            ${JSON.stringify({ source: snapshot.target.source })}::jsonb
+          )
+          RETURNING *
+        `);
+        const content = contentRows[0];
+
+        for (const metric of item.metrics || []) {
+          await tx.$queryRaw(Prisma.sql`
+            INSERT INTO content_metrics
+              (snapshot_id,metric_key,value,unit,evidence,confidence,observed_at)
+            VALUES (
+              ${content.id}::uuid,
+              ${metric.key},
+              ${metric.value},
+              ${metric.unit || 'count'},
+              ${metric.evidence},
+              ${metric.confidence ?? null},
+              ${new Date(metric.observedAt)}
+            )
+            ON CONFLICT (snapshot_id,metric_key,evidence)
+            DO UPDATE SET
+              value = EXCLUDED.value,
+              unit = EXCLUDED.unit,
+              confidence = EXCLUDED.confidence,
+              observed_at = EXCLUDED.observed_at
+          `);
+        }
+      }
+
+      return audit;
+    });
+  }
+
+  competitorOutliers(organizationId: string) {
+    return this.prisma.$queryRaw<any[]>(Prisma.sql`
+      SELECT
+        cs.id,
+        cs.external_id,
+        cs.url,
+        cs.published_at,
+        cs.format,
+        cs.body_text,
+        cs.hook,
+        cs.cta,
+        cs.topics,
+        st.id AS target_id,
+        st.label,
+        st.handle,
+        st.platform,
+        COALESCE(SUM(
+          CASE cm.metric_key
+            WHEN 'views' THEN cm.value
+            WHEN 'likes' THEN cm.value * 2
+            WHEN 'comments' THEN cm.value * 4
+            WHEN 'shares' THEN cm.value * 6
+            WHEN 'saves' THEN cm.value * 6
+            ELSE 0
+          END
+        ) FILTER (WHERE cm.evidence = 'observed'), 0) AS observed_score
+      FROM content_snapshots cs
+      JOIN social_targets st ON st.id = cs.target_id
+      LEFT JOIN content_metrics cm ON cm.snapshot_id = cs.id
+      WHERE cs.organization_id = ${organizationId}
+        AND st.is_competitor = true
+      GROUP BY cs.id, st.id
+      ORDER BY observed_score DESC, cs.published_at DESC NULLS LAST
+      LIMIT 100
+    `);
   }
 
   async createAudit(organizationId: string, input: CreateAuditRunDto) {
