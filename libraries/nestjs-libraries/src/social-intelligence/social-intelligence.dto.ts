@@ -143,6 +143,7 @@ export class CreateLearningInsightDto {
 export class GenerateStrategyDto {
   @IsString() brandName!: string;
   @IsOptional() @IsString() goal?: string;
+  @IsOptional() @IsObject() brandContext?: Record<string, unknown>;
   @IsOptional() @IsArray() evidence?: unknown[];
   @IsOptional() @IsArray() competitors?: unknown[];
 }
@@ -150,6 +151,7 @@ export class GenerateStrategyDto {
 export class GenerateIdeasDto {
   @IsString() brandName!: string;
   @IsOptional() @IsString() goal?: string;
+  @IsOptional() @IsObject() brandContext?: Record<string, unknown>;
   @IsOptional() @IsArray() pillars?: string[];
   @IsOptional() @IsArray() evidence?: unknown[];
   @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) count?: number;
