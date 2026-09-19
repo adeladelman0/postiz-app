@@ -1,8 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSocialIntelligence } from '@gitroom/frontend/components/social-intelligence/use.social-intelligence';
+import { useFetch } from '@gitroom/helpers/utils/custom.fetch';
 
 const example = JSON.stringify({
   profileMetrics: [],
@@ -12,16 +13,37 @@ const example = JSON.stringify({
 
 export default function Page() {
   const { data, request } = useSocialIntelligence();
+  const fetcher = useFetch();
+  const [integrations, setIntegrations] = useState<any[]>([]);
   const [targetId, setTargetId] = useState('');
   const [payload, setPayload] = useState(example);
   const [preview, setPreview] = useState<any>(null);
   const [working, setWorking] = useState(false);
   const [message, setMessage] = useState('');
 
+  useEffect(() => {
+    fetcher('/integrations/list')
+      .then((response) => response.json())
+      .then((payload) => setIntegrations((payload.integrations || []).filter((item:any)=>!item.disabled)))
+      .catch(() => setIntegrations([]));
+  }, [fetcher]);
+
   const target = useMemo(
     () => data.targets.find((item)=>item.id===targetId) || data.targets[0],
     [data.targets, targetId]
   );
+
+  async function syncConnected(integrationId:string) {
+    setWorking(true); setMessage('');
+    try {
+      await request('/connected/' + integrationId + '/audit', 'POST', { days: 30 });
+      setMessage('Connected analytics synced into a new audit.');
+    } catch (e:any) {
+      setMessage(e.message || 'Could not sync connected analytics');
+    } finally {
+      setWorking(false);
+    }
+  }
 
   async function analyze() {
     if (!target) return;
@@ -68,7 +90,21 @@ export default function Page() {
       Rank content from observed evidence. Public URL tracking never unlocks private reach, impressions, saves or audience data.
     </p>
 
-    <div className="mt-8 grid gap-4 lg:grid-cols-[320px_1fr]">
+    <div className="mt-8 rounded-2xl border border-white/10 p-5">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <b>Authorized connected accounts</b>
+          <p className="text-xs opacity-55 mt-1">Import real account analytics through the official connections already configured in Postiz.</p>
+        </div>
+        <Link href="/launches" className="text-sm underline opacity-70">Manage channels</Link>
+      </div>
+      <div className="flex flex-wrap gap-3 mt-4">
+        {integrations.map((item:any)=><button key={item.id} onClick={()=>syncConnected(item.id)} disabled={working} className="rounded-xl border border-white/10 px-4 py-3 text-sm disabled:opacity-50">{item.name || item.profile || item.identifier} · sync 30d</button>)}
+        {!integrations.length ? <div className="text-sm opacity-55">No connected social channels found.</div> : null}
+      </div>
+    </div>
+
+    <div className="mt-6 grid gap-4 lg:grid-cols-[320px_1fr]">
       <div className="rounded-2xl border border-white/10 p-5">
         <b>Target</b>
         <select value={target?.id || ''} onChange={(e)=>setTargetId(e.target.value)} className="mt-3 w-full rounded-xl border border-white/10 bg-transparent px-4 py-3">
