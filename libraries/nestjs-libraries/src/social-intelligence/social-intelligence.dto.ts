@@ -130,3 +130,27 @@ export class CreateLearningInsightDto {
   @IsOptional() @IsArray() evidence?: unknown[];
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(1) confidence?: number;
 }
+
+
+export class GenerateStrategyDto {
+  @IsString() brandName!: string;
+  @IsOptional() @IsString() goal?: string;
+  @IsOptional() @IsArray() evidence?: unknown[];
+  @IsOptional() @IsArray() competitors?: unknown[];
+}
+
+export class GenerateIdeasDto {
+  @IsString() brandName!: string;
+  @IsOptional() @IsString() goal?: string;
+  @IsOptional() @IsArray() pillars?: string[];
+  @IsOptional() @IsArray() evidence?: unknown[];
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) count?: number;
+}
+
+export class GeneratePlanDto {
+  @IsString() brandName!: string;
+  @Type(() => Number) @IsInt() @IsIn([30, 60, 90]) horizonDays!: 30 | 60 | 90;
+  @IsOptional() @IsArray() ideas?: unknown[];
+  @IsOptional() @IsArray() evidence?: unknown[];
+  @IsOptional() @IsString() timezone?: string;
+}
