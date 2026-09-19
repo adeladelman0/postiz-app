@@ -37,6 +37,22 @@ export default function Page() {
     return [...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12);
   }, [outliers]);
 
+  async function syncPublicTarget(target:any) {
+    setSaving(true); setError('');
+    try {
+      if (target.platform !== 'youtube') {
+        setError('Automatic public sync is currently available for YouTube through the official API. Use Social Audit to import observed data for this platform.');
+        return;
+      }
+      await request('/targets/' + target.id + '/public-sync', 'POST', { maxPosts: 25 });
+      setError('');
+    } catch (e:any) {
+      setError(e.message || 'Could not sync public profile');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   async function generateGaps() {
     const brand = data.brands[0];
     if (!brand) {
@@ -149,6 +165,24 @@ export default function Page() {
           </div>
           <div className="text-sm opacity-60 mt-3 break-all">{target.profile_url}</div>
           <div className="text-xs opacity-50 mt-4">Source: {target.source || 'public'}</div>
+          <div className="flex gap-2 mt-4">
+            {target.platform === 'youtube' ? (
+              <button
+                onClick={()=>syncPublicTarget(target)}
+                disabled={saving}
+                className="rounded-lg border border-white/10 px-3 py-2 text-xs disabled:opacity-50"
+              >
+                {saving ? 'Syncing…' : 'Sync public YouTube'}
+              </button>
+            ) : (
+              <Link
+                href="/social-intelligence/audit"
+                className="rounded-lg border border-white/10 px-3 py-2 text-xs"
+              >
+                Import observed data
+              </Link>
+            )}
+          </div>
         </div>
       ))}
       {!isLoading && !competitors.length ? (
