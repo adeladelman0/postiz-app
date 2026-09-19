@@ -94,6 +94,27 @@ export const useMenuItem = () => {
       path: '/analytics',
     },
     {
+      name: t('social_intelligence', 'Intelligence'),
+      icon: (
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="21"
+          height="21"
+          viewBox="0 0 24 24"
+          fill="none"
+        >
+          <path
+            d="M4 19V10M10 19V5M16 19v-7M22 19H2M3 7l6-4 6 5 6-5"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ),
+      path: '/social-intelligence',
+    },
+    {
       name: t('media', 'Media'),
       icon: (
         <svg
