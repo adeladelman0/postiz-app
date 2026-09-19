@@ -6,6 +6,7 @@ import { SocialIntelligenceService } from '@gitroom/nestjs-libraries/social-inte
 import { SocialIntelligenceRepository } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.repository';
 import { SocialIntelligenceAiService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.ai.service';
 import { IntegrationService } from '@gitroom/nestjs-libraries/database/prisma/integrations/integration.service';
+import { PostsService } from '@gitroom/nestjs-libraries/database/prisma/posts/posts.service';
 import { SocialIntelligenceReportService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.report.service';
 import { Response } from 'express';
 import { AuditSnapshot } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.types';
@@ -36,6 +37,7 @@ export class SocialIntelligenceController {
     private readonly repository: SocialIntelligenceRepository,
     private readonly ai: SocialIntelligenceAiService,
     private readonly integrations: IntegrationService,
+    private readonly posts: PostsService,
     private readonly reports: SocialIntelligenceReportService
   ) {}
 
@@ -209,6 +211,46 @@ export class SocialIntelligenceController {
     @Body() body: DecideApprovalDto
   ) {
     return this.repository.decideApproval(org.id, user.id, id, body);
+  }
+
+  @Post('/performance/sync/:planItemId')
+  async syncPerformance(
+    @GetOrgFromRequest() org: Organization,
+    @Param('planItemId') planItemId: string,
+    @Body() body: SyncConnectedAuditDto
+  ) {
+    const item = await this.repository.getPlanItem(org.id, planItemId);
+    if (!item?.postiz_post_id) {
+      return null;
+    }
+
+    const analytics = await this.posts.checkPostAnalytics(
+      org.id,
+      item.postiz_post_id,
+      body.days
+    );
+    if (!Array.isArray(analytics)) {
+      return analytics;
+    }
+
+    const metrics = analytics.reduce((all: Record<string, number>, metric: any) => {
+      const key = String(metric.label || 'metric')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_')
+        .replace(/^_|_$/g, '');
+      const points = Array.isArray(metric.data) ? metric.data : [];
+      const latest = points[points.length - 1];
+      all[key] = Number(latest?.total || 0);
+      return all;
+    }, {});
+
+    return this.repository.createPerformance(org.id, {
+      planItemId,
+      postizPostId: item.postiz_post_id,
+      platform: item.platform,
+      metrics,
+      observedAt: new Date().toISOString(),
+    });
   }
 
   @Post('/performance')
