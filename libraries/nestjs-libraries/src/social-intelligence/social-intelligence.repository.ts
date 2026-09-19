@@ -21,6 +21,15 @@ import {
 export class SocialIntelligenceRepository {
   constructor(private readonly prisma: SocialIntelligenceDatabase) {}
 
+  async health() {
+    const rows = await this.prisma.$queryRaw<Array<{ ok: number }>>(Prisma.sql`
+      SELECT 1 AS ok
+      FROM brand_profiles
+      LIMIT 1
+    `);
+    return { database: 'ok', reachable: Array.isArray(rows) };
+  }
+
   async dashboard(organizationId: string) {
     const [
       brands,
