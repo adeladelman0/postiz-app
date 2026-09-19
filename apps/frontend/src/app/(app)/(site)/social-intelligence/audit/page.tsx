@@ -72,13 +72,20 @@ export default function Page() {
     if (!target || !preview) return;
     setWorking(true); setMessage('');
     try {
-      await request('/audits','POST',{
-        targetId: target.id,
-        status: 'completed',
-        summary: preview,
-        notes: preview.notes || [],
+      const imported = JSON.parse(payload);
+      await request('/targets/' + target.id + '/observations','POST',{
+        target: {
+          platform: target.platform,
+          profileUrl: target.profile_url,
+          handle: target.handle || undefined,
+          source: target.source || 'imported',
+        },
+        capturedAt: new Date().toISOString(),
+        profileMetrics: imported.profileMetrics || [],
+        content: imported.content || [],
+        notes: imported.notes || [],
       });
-      setMessage('Audit saved.');
+      setMessage('Audit and observed content evidence saved.');
     } catch (e:any) { setMessage(e.message || 'Could not save audit'); }
     finally { setWorking(false); }
   }
