@@ -4,6 +4,7 @@ import { SocialIntelligenceRepository } from './social-intelligence.repository';
 import { SocialIntelligenceDatabase } from './social-intelligence.database';
 import { SocialIntelligenceAiService } from './social-intelligence.ai.service';
 import { SocialIntelligenceReportService } from './social-intelligence.report.service';
+import { SocialIntelligencePublicDataService } from './social-intelligence.public-data.service';
 
 @Module({
   providers: [
@@ -12,12 +13,14 @@ import { SocialIntelligenceReportService } from './social-intelligence.report.se
     SocialIntelligenceRepository,
     SocialIntelligenceAiService,
     SocialIntelligenceReportService,
+    SocialIntelligencePublicDataService,
   ],
   exports: [
     SocialIntelligenceService,
     SocialIntelligenceRepository,
     SocialIntelligenceAiService,
     SocialIntelligenceReportService,
+    SocialIntelligencePublicDataService,
   ],
 })
 export class SocialIntelligenceModule {}
