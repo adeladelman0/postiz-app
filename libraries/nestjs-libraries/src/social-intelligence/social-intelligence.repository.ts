@@ -308,7 +308,19 @@ export class SocialIntelligenceRepository {
 
   competitorOutliers(organizationId: string) {
     return this.prisma.$queryRaw<any[]>(Prisma.sql`
-      WITH scored AS (
+      WITH latest_content AS (
+        SELECT DISTINCT ON (cs.target_id, cs.external_id)
+          cs.*
+        FROM content_snapshots cs
+        JOIN social_targets st ON st.id = cs.target_id
+        WHERE cs.organization_id = ${organizationId}
+          AND st.is_competitor = true
+        ORDER BY
+          cs.target_id,
+          cs.external_id,
+          cs.created_at DESC
+      ),
+      scored AS (
         SELECT
           cs.id,
           cs.external_id,
@@ -333,12 +345,12 @@ export class SocialIntelligenceRepository {
               ELSE 0
             END
           ) FILTER (WHERE cm.evidence = 'observed'), 0) AS observed_score
-        FROM content_snapshots cs
+        FROM latest_content cs
         JOIN social_targets st ON st.id = cs.target_id
         LEFT JOIN content_metrics cm ON cm.content_snapshot_id = cs.id
-        WHERE cs.organization_id = ${organizationId}
-          AND st.is_competitor = true
-        GROUP BY cs.id, st.id
+        GROUP BY cs.id, cs.external_id, cs.url, cs.published_at, cs.format,
+          cs.body_text, cs.hook, cs.cta, cs.topics, st.id, st.label, st.handle,
+          st.platform
       ),
       normalized AS (
         SELECT
