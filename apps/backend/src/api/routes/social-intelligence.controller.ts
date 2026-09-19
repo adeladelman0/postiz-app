@@ -1,10 +1,24 @@
-import { Body, Controller, Get, Post } from '@nestjs/common';
-import { Organization } from '@prisma/client';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
+import { Organization, User } from '@prisma/client';
 import { GetOrgFromRequest } from '@gitroom/nestjs-libraries/user/org.from.request';
+import { GetUserFromRequest } from '@gitroom/nestjs-libraries/user/user.from.request';
 import { SocialIntelligenceService } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.service';
 import { SocialIntelligenceRepository } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.repository';
 import { AuditSnapshot } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.types';
-import { CreateBrandDto, CreateIdeaDto, CreatePlanDto, CreateSocialTargetDto } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.dto';
+import {
+  CreateApprovalRequestDto,
+  CreateAuditRunDto,
+  CreateBrandDto,
+  CreateIdeaDto,
+  CreateLearningInsightDto,
+  CreatePerformanceSnapshotDto,
+  CreatePlanDto,
+  CreatePlanItemDto,
+  CreateSocialTargetDto,
+  CreateStrategyDto,
+  DecideApprovalDto,
+  UpdateIdeaStatusDto,
+} from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.dto';
 
 @Controller('/social-intelligence')
 export class SocialIntelligenceController {
@@ -23,22 +37,103 @@ export class SocialIntelligenceController {
     @GetOrgFromRequest() org: Organization,
     @Body() body: CreateBrandDto
   ) {
-    return this.repository.createBrand(org.id, body.name, body.website, body.industry);
+    return this.repository.createBrand(
+      org.id,
+      body.name,
+      body.website,
+      body.industry
+    );
   }
 
   @Post('/targets')
-  createTarget(@GetOrgFromRequest() org: Organization, @Body() body: CreateSocialTargetDto) {
+  createTarget(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreateSocialTargetDto
+  ) {
     return this.repository.createTarget(org.id, body);
   }
 
+  @Post('/audits')
+  createAudit(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreateAuditRunDto
+  ) {
+    return this.repository.createAudit(org.id, body);
+  }
+
+  @Post('/strategies')
+  createStrategy(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreateStrategyDto
+  ) {
+    return this.repository.createStrategy(org.id, body);
+  }
+
   @Post('/ideas')
-  createIdea(@GetOrgFromRequest() org: Organization, @Body() body: CreateIdeaDto) {
+  createIdea(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreateIdeaDto
+  ) {
     return this.repository.createIdea(org.id, body);
   }
 
+  @Patch('/ideas/:id/status')
+  updateIdeaStatus(
+    @GetOrgFromRequest() org: Organization,
+    @Param('id') id: string,
+    @Body() body: UpdateIdeaStatusDto
+  ) {
+    return this.repository.updateIdeaStatus(org.id, id, body.status);
+  }
+
   @Post('/plans')
-  createPlan(@GetOrgFromRequest() org: Organization, @Body() body: CreatePlanDto) {
+  createPlan(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreatePlanDto
+  ) {
     return this.repository.createPlan(org.id, body);
+  }
+
+  @Post('/plan-items')
+  createPlanItem(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreatePlanItemDto
+  ) {
+    return this.repository.createPlanItem(org.id, body);
+  }
+
+  @Post('/approvals')
+  createApproval(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreateApprovalRequestDto
+  ) {
+    return this.repository.createApproval(org.id, body);
+  }
+
+  @Patch('/approvals/:id')
+  decideApproval(
+    @GetOrgFromRequest() org: Organization,
+    @GetUserFromRequest() user: User,
+    @Param('id') id: string,
+    @Body() body: DecideApprovalDto
+  ) {
+    return this.repository.decideApproval(org.id, user.id, id, body);
+  }
+
+  @Post('/performance')
+  createPerformance(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreatePerformanceSnapshotDto
+  ) {
+    return this.repository.createPerformance(org.id, body);
+  }
+
+  @Post('/insights')
+  createInsight(
+    @GetOrgFromRequest() org: Organization,
+    @Body() body: CreateLearningInsightDto
+  ) {
+    return this.repository.createInsight(org.id, body);
   }
 
   @Post('/audit/preview')
