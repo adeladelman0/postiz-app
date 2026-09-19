@@ -16,6 +16,8 @@ export default function Page() {
   const [label, setLabel] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [gaps, setGaps] = useState<any[]>([]);
+  const [gapWorking, setGapWorking] = useState(false);
 
   const competitors = data.targets.filter((target) => target.is_competitor);
 
@@ -34,6 +36,32 @@ export default function Page() {
     });
     return [...counts.entries()].sort((a,b)=>b[1]-a[1]).slice(0,12);
   }, [outliers]);
+
+  async function generateGaps() {
+    const brand = data.brands[0];
+    if (!brand) {
+      setError('Add a brand from the Intelligence dashboard first.');
+      return;
+    }
+    setGapWorking(true); setError('');
+    try {
+      const result = await request<any>('/generate/gaps','POST',{
+        brandName: brand.name,
+        brandContext: {
+          industry: brand.industry,
+          audience: brand.audience || {},
+          voice: brand.voice || {},
+        },
+        competitorObservations: outliers.slice(0,30),
+        count: 6,
+      });
+      setGaps(result?.data?.gaps || []);
+    } catch (e:any) {
+      setError(e.message || 'Could not generate content gaps');
+    } finally {
+      setGapWorking(false);
+    }
+  }
 
   async function addCompetitor(event: FormEvent) {
     event.preventDefault();
@@ -93,13 +121,24 @@ export default function Page() {
         </div>
       </div>
       <div className="rounded-2xl border border-white/10 p-5">
-        <b>Observed themes</b>
+        <div className="flex justify-between gap-3 items-center"><b>Observed themes</b><button onClick={generateGaps} disabled={gapWorking || !outliers.length} className="rounded-lg border border-white/10 px-3 py-2 text-xs disabled:opacity-50">{gapWorking ? 'Generating…' : 'Find content gaps'}</button></div>
         <div className="flex flex-wrap gap-2 mt-4">
           {themes.map(([topic,count])=><span key={topic} className="rounded-full border border-white/10 px-3 py-2 text-sm">{topic} <span className="opacity-50">×{count}</span></span>)}
           {!themes.length ? <span className="text-sm opacity-55">No topic evidence yet.</span> : null}
         </div>
       </div>
     </div>
+
+    {gaps.length ? <div className="mt-6 rounded-2xl border border-white/10 p-5">
+      <b>Recommended content gaps / opportunities</b>
+      <div className="grid gap-3 md:grid-cols-2 mt-4">
+        {gaps.map((gap,index)=><div key={index} className="rounded-xl border border-white/10 p-4">
+          <div className="font-medium">{gap.opportunity}</div>
+          <div className="text-sm opacity-65 mt-2">{gap.why}</div>
+          <div className="text-xs opacity-55 mt-3">{gap.experiment}</div>
+        </div>)}
+      </div>
+    </div> : null}
 
     <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {competitors.map((target) => (
