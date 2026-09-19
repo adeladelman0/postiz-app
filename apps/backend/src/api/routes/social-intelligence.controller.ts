@@ -22,6 +22,7 @@ import {
   CreateSocialTargetDto,
   CreateStrategyDto,
   DecideApprovalDto,
+  GenerateGapsDto,
   GenerateIdeasDto,
   GeneratePlanDto,
   GenerateStrategyDto,
@@ -296,6 +297,11 @@ export class SocialIntelligenceController {
     @Body() body: CreateLearningInsightDto
   ) {
     return this.repository.createInsight(org.id, body);
+  }
+
+  @Post('/generate/gaps')
+  generateGaps(@Body() body: GenerateGapsDto) {
+    return this.ai.generateGaps(body);
   }
 
   @Post('/generate/strategy')
