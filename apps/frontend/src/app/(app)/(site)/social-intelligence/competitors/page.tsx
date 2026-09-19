@@ -11,6 +11,7 @@ export default function Page() {
   const { data, request, isLoading } = useSocialIntelligence();
   const fetcher = useFetch();
   const [outliers, setOutliers] = useState<any[]>([]);
+  const [brandId, setBrandId] = useState('');
   const [platform, setPlatform] = useState('instagram');
   const [profileUrl, setProfileUrl] = useState('');
   const [label, setLabel] = useState('');
@@ -19,14 +20,22 @@ export default function Page() {
   const [gaps, setGaps] = useState<any[]>([]);
   const [gapWorking, setGapWorking] = useState(false);
 
-  const competitors = data.targets.filter((target) => target.is_competitor);
+  const brand = useMemo(
+    () => data.brands.find((item)=>item.id===brandId) || data.brands[0],
+    [data.brands, brandId]
+  );
+  const competitors = data.targets.filter(
+    (target) =>
+      target.is_competitor &&
+      (!brand || !target.brand_profile_id || target.brand_profile_id === brand.id)
+  );
 
   useEffect(() => {
-    fetcher('/social-intelligence/competitors/outliers')
+    fetcher('/social-intelligence/competitors/outliers' + (brand?.id ? '?brandProfileId=' + encodeURIComponent(brand.id) : ''))
       .then((response) => response.json())
       .then((payload) => setOutliers(Array.isArray(payload) ? payload : []))
       .catch(() => setOutliers([]));
-  }, [fetcher, data.audits.length]);
+  }, [fetcher, data.audits.length, brand?.id]);
 
   const themes = useMemo(() => {
     const counts = new Map<string, number>();
@@ -54,7 +63,6 @@ export default function Page() {
   }
 
   async function generateGaps() {
-    const brand = data.brands[0];
     if (!brand) {
       setError('Add a brand from the Intelligence dashboard first.');
       return;
@@ -85,6 +93,7 @@ export default function Page() {
     setError('');
     try {
       await request('/targets', 'POST', {
+        brandProfileId: brand?.id,
         platform,
         profileUrl,
         label,
@@ -107,14 +116,18 @@ export default function Page() {
       Track public competitor profiles without pretending private metrics are available.
     </p>
 
-    <form onSubmit={addCompetitor} className="mt-8 rounded-2xl border border-white/10 p-5 grid gap-3 md:grid-cols-[180px_1fr_220px_auto]">
+    <form onSubmit={addCompetitor} className="mt-8 rounded-2xl border border-white/10 p-5 grid gap-3 md:grid-cols-[220px_180px_1fr_220px_auto]">
+      <select value={brand?.id || ''} onChange={(e)=>setBrandId(e.target.value)} className="rounded-xl border border-white/10 bg-transparent px-4 py-3">
+        {!data.brands.length ? <option value="">Add a brand first</option> : null}
+        {data.brands.map((item)=><option key={item.id} value={item.id}>{item.name}</option>)}
+      </select>
       <select value={platform} onChange={(e)=>setPlatform(e.target.value)} className="rounded-xl border border-white/10 bg-transparent px-4 py-3">
         {platforms.map((item)=><option key={item} value={item}>{item}</option>)}
       </select>
       <input value={profileUrl} onChange={(e)=>setProfileUrl(e.target.value)} required type="url" placeholder="https://..." className="rounded-xl border border-white/10 bg-transparent px-4 py-3" />
       <input value={label} onChange={(e)=>setLabel(e.target.value)} placeholder="Competitor label" className="rounded-xl border border-white/10 bg-transparent px-4 py-3" />
-      <button disabled={saving} className="rounded-xl bg-white text-black px-5 py-3 font-medium disabled:opacity-50">{saving ? 'Adding…' : 'Add competitor'}</button>
-      {error ? <div className="md:col-span-4 text-sm text-red-400">{error}</div> : null}
+      <button disabled={saving || !brand} className="rounded-xl bg-white text-black px-5 py-3 font-medium disabled:opacity-50">{saving ? 'Adding…' : 'Add competitor'}</button>
+      {error ? <div className="md:col-span-5 text-sm text-red-400">{error}</div> : null}
     </form>
 
     <div className="mt-8 grid gap-4 lg:grid-cols-[2fr_1fr]">
