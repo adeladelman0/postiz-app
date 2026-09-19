@@ -83,7 +83,7 @@ export default function Page() {
           {outliers.slice(0,10).map((item,index)=><div key={item.id} className="rounded-xl border border-white/10 p-4">
             <div className="flex items-center justify-between gap-4">
               <div className="font-medium">#{index+1} · {item.label || item.handle || item.platform}</div>
-              <div className="text-xs opacity-60">score {Number(item.observed_score || 0).toFixed(0)}</div>
+              <div className="text-xs opacity-60">{Number(item.outlier_ratio || 0).toFixed(2)}× baseline · score {Number(item.observed_score || 0).toFixed(0)}</div>
             </div>
             {item.hook ? <div className="mt-2 text-sm">{item.hook}</div> : null}
             {item.body_text ? <div className="mt-2 text-sm opacity-65 line-clamp-3">{item.body_text}</div> : null}
