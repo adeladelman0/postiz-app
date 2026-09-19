@@ -298,37 +298,52 @@ export class SocialIntelligenceRepository {
 
   competitorOutliers(organizationId: string) {
     return this.prisma.$queryRaw<any[]>(Prisma.sql`
+      WITH scored AS (
+        SELECT
+          cs.id,
+          cs.external_id,
+          cs.url,
+          cs.published_at,
+          cs.format,
+          cs.body_text,
+          cs.hook,
+          cs.cta,
+          cs.topics,
+          st.id AS target_id,
+          st.label,
+          st.handle,
+          st.platform,
+          COALESCE(SUM(
+            CASE cm.metric_key
+              WHEN 'views' THEN cm.metric_value
+              WHEN 'likes' THEN cm.metric_value * 2
+              WHEN 'comments' THEN cm.metric_value * 4
+              WHEN 'shares' THEN cm.metric_value * 6
+              WHEN 'saves' THEN cm.metric_value * 6
+              ELSE 0
+            END
+          ) FILTER (WHERE cm.evidence = 'observed'), 0) AS observed_score
+        FROM content_snapshots cs
+        JOIN social_targets st ON st.id = cs.target_id
+        LEFT JOIN content_metrics cm ON cm.content_snapshot_id = cs.id
+        WHERE cs.organization_id = ${organizationId}
+          AND st.is_competitor = true
+        GROUP BY cs.id, st.id
+      ),
+      normalized AS (
+        SELECT
+          scored.*,
+          AVG(observed_score) OVER (PARTITION BY target_id) AS target_average
+        FROM scored
+      )
       SELECT
-        cs.id,
-        cs.external_id,
-        cs.url,
-        cs.published_at,
-        cs.format,
-        cs.body_text,
-        cs.hook,
-        cs.cta,
-        cs.topics,
-        st.id AS target_id,
-        st.label,
-        st.handle,
-        st.platform,
-        COALESCE(SUM(
-          CASE cm.metric_key
-            WHEN 'views' THEN cm.metric_value
-            WHEN 'likes' THEN cm.metric_value * 2
-            WHEN 'comments' THEN cm.metric_value * 4
-            WHEN 'shares' THEN cm.metric_value * 6
-            WHEN 'saves' THEN cm.metric_value * 6
-            ELSE 0
-          END
-        ) FILTER (WHERE cm.evidence = 'observed'), 0) AS observed_score
-      FROM content_snapshots cs
-      JOIN social_targets st ON st.id = cs.target_id
-      LEFT JOIN content_metrics cm ON cm.content_snapshot_id = cs.id
-      WHERE cs.organization_id = ${organizationId}
-        AND st.is_competitor = true
-      GROUP BY cs.id, st.id
-      ORDER BY observed_score DESC, cs.published_at DESC NULLS LAST
+        normalized.*,
+        CASE
+          WHEN target_average > 0 THEN observed_score / target_average
+          ELSE 0
+        END AS outlier_ratio
+      FROM normalized
+      ORDER BY outlier_ratio DESC, observed_score DESC, published_at DESC NULLS LAST
       LIMIT 100
     `);
   }
