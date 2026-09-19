@@ -56,6 +56,8 @@ import { FarcasterProvider } from '@gitroom/backend/services/auth/providers/farc
 import { WalletProvider } from '@gitroom/backend/services/auth/providers/wallet.provider';
 import { OauthProvider } from '@gitroom/backend/services/auth/providers/oauth.provider';
 import { StripeController } from '@gitroom/backend/api/routes/stripe.controller';
+import { SocialIntelligenceController } from '@gitroom/backend/api/routes/social-intelligence.controller';
+import { SocialIntelligenceModule } from '@gitroom/nestjs-libraries/social-intelligence/social-intelligence.module';
 
 const authenticatedController = [
   UsersController,
@@ -78,9 +80,10 @@ const authenticatedController = [
   OAuthAuthorizedController,
   AnnouncementsController,
   AdminController,
+  SocialIntelligenceController,
 ];
 @Module({
-  imports: [UploadModule],
+  imports: [UploadModule, SocialIntelligenceModule],
   controllers: process.env.MCP_ONLY
     ? [
         RootController,
